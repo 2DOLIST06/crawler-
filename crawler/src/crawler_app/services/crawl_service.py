@@ -13,11 +13,7 @@ from crawler_app.crawler.fetchers.browser_fetcher import BrowserFetcher
 from crawler_app.crawler.analyzers import SEOAnalyzer, LinkAnalyzer, SlugAnalyzer
 
 TRACKING_PARAMS = {"utm_source", "utm_medium", "utm_campaign", "gclid", "fbclid", "msclkid", "ae"}
-ENGLISH_SLUGS = [
-    "/categorie/airplane", "/categorie/helicopter", "/categorie/glider", "/categorie/paragliding", "/categorie/skydiving", "/categorie/hot-air-balloon",
-    "/subcategorie/flight-simulator", "/subcategorie/airplane-flying-lesson",
-    "airplane", "helicopter", "glider", "paragliding", "skydiving", "hot-air-balloon", "flight-simulator", "airplane-flying-lesson",
-]
+ENGLISH_SLUGS = ["airplane", "helicopter", "glider", "paragliding", "skydiving", "hot-air-balloon", "flight-simulator", "airplane-flying-lesson"]
 IGNORE_PATTERNS = ["/_next/", "/api/", "/static/", "/images/", ".jpg", ".jpeg", ".png", ".webp", ".avif", ".svg", ".css", ".js", ".woff", ".woff2", ".ico"]
 
 
@@ -46,6 +42,14 @@ def _is_internal_crawlable_url(project, normalized_url: str) -> bool:
     if project.same_host_only:
         return host == allowed_domain
     return host == allowed_domain
+
+def _matched_english_slug(url: str | None) -> str | None:
+    parsed = urlparse(url or "")
+    segments = [segment.lower() for segment in (parsed.path or "").split("/") if segment]
+    for segment in segments:
+        if segment in ENGLISH_SLUGS:
+            return segment
+    return None
 
 def _is_indexable(page: CrawledPage) -> str:
     if page.status_code != 200:
@@ -199,12 +203,30 @@ def _generate_seo_exports(db, run_id: int):
     _write_csv(base / "issues.csv", ["severity", "issue_type", "url", "source_url", "target_url", "evidence", "recommendation"], issues_rows)
 
     en_rows = []
+    page_by_url = {normalize_url(p.final_url): p for p in pages}
     for l in links:
-        for slug in ENGLISH_SLUGS:
-            if slug in (l.normalized_url or ""):
-                en_rows.append({"source_url": l.source_url, "found_url": l.normalized_url, "discovery_type": l.link_type, "matched_slug": slug, "anchor_text": l.anchor_text, "status_final": l.status_code, "canonical": "", "recommendation": "Remplacer par slug FR ou redirection 301 vers version FR"})
-                break
-    _write_csv(base / "english_slugs_on_fr.csv", ["source_url", "found_url", "discovery_type", "matched_slug", "anchor_text", "status_final", "canonical", "recommendation"], en_rows)
+        slug = _matched_english_slug(l.normalized_url)
+        if not slug:
+            continue
+        target_page = page_by_url.get(normalize_url(l.normalized_url))
+        indexable_status = _is_indexable(target_page) if target_page else "non crawlée"
+        en_rows.append({
+            "issue_type": "internal_link_to_english_slug",
+            "issue_label": "Lien interne vers une URL avec slug anglais",
+            "source_url": l.source_url,
+            "found_url": l.normalized_url,
+            "discovery_type": l.link_type,
+            "found_in": "Dans un lien HTML <a href>",
+            "anchor_text": l.anchor_text,
+            "matched_slug": slug,
+            "status_final": l.status_code,
+            "canonical": target_page.canonical if target_page else "",
+            "was_crawled": "oui" if target_page else "non",
+            "indexable_status": indexable_status,
+            "where_to_fix": "Corriger le lien généré sur la page source : composant, contenu CMS ou fonction de génération d’URL.",
+            "recommended_action": "Remplacer ce lien par l’URL française équivalente.",
+        })
+    _write_csv(base / "english_slugs_on_fr.csv", ["issue_type", "issue_label", "source_url", "found_url", "discovery_type", "found_in", "anchor_text", "matched_slug", "status_final", "canonical", "was_crawled", "indexable_status", "where_to_fix", "recommended_action"], en_rows)
 
     _write_csv(base / "internal_links.csv", ["source_url", "target_url", "anchor_text", "status_final", "final_url", "issue"], [{"source_url": l.source_url, "target_url": l.normalized_url, "anchor_text": l.anchor_text, "status_final": l.status_code, "final_url": l.normalized_url, "issue": l.issue} for l in links if l.is_internal])
     _write_csv(base / "canonicals.csv", ["url", "canonical", "canonical_status", "issue"], [{"url": p.final_url, "canonical": p.canonical, "canonical_status": "ok" if p.canonical else "missing", "issue": "canonical absente" if not p.canonical else ""} for p in pages])
