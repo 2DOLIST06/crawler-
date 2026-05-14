@@ -14,9 +14,9 @@ templates=Jinja2Templates(directory='src/crawler_app/templates')
 router=APIRouter(prefix='/runs')
 
 @router.post('/create/{project_id}')
-def create_run(project_id:int,request:Request, mode:str=Form('http'), max_pages:int=Form(100), max_depth:int=Form(3), db:Session=Depends(get_db)):
+def create_run(project_id:int,request:Request, mission:str=Form('simple'), mode:str=Form('http'), max_pages:int=Form(100), max_depth:int=Form(3), db:Session=Depends(get_db)):
     if not is_auth(request): return RedirectResponse('/login',302)
-    run=Run(project_id=project_id,mode=mode,max_pages=max_pages,max_depth=max_depth,config_snapshot={'mode':mode,'max_pages':max_pages,'max_depth':max_depth})
+    run=Run(project_id=project_id,mode=mode,max_pages=max_pages,max_depth=max_depth,config_snapshot={'mission':mission,'mode':mode,'max_pages':max_pages,'max_depth':max_depth})
     db.add(run); db.commit(); db.refresh(run)
     asyncio.run(execute_run(db,run,db.get(Project,project_id)))
     return RedirectResponse(f'/runs/{run.id}',302)
