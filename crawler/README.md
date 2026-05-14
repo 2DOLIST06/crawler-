@@ -128,4 +128,4 @@ Ensuite lancez le serveur :
 PYTHONPATH=src uvicorn crawler_app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Cette étape garantit la compatibilité des bases existantes (SQLite locale et PostgreSQL) avec les nouveaux champs comme `runs.mission_type`.
+Cette étape garantit la compatibilité des bases existantes (SQLite locale et PostgreSQL) avec les nouveaux champs (ex: `runs.mission_type`, `runs.last_crawled_url`, `runs.updated_at`).

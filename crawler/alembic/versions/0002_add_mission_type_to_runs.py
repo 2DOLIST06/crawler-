@@ -18,6 +18,12 @@ depends_on = None
 DEFAULT_MISSION_TYPE = "simple_crawl"
 
 
+def _has_table(table_name: str) -> bool:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    return table_name in inspector.get_table_names()
+
+
 def _has_column(table_name: str, column_name: str) -> bool:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -26,7 +32,7 @@ def _has_column(table_name: str, column_name: str) -> bool:
 
 
 def upgrade():
-    if _has_column("runs", "mission_type"):
+    if not _has_table("runs") or _has_column("runs", "mission_type"):
         return
 
     with op.batch_alter_table("runs") as batch_op:
@@ -46,7 +52,7 @@ def upgrade():
 
 
 def downgrade():
-    if not _has_column("runs", "mission_type"):
+    if not _has_table("runs") or not _has_column("runs", "mission_type"):
         return
 
     with op.batch_alter_table("runs") as batch_op:
