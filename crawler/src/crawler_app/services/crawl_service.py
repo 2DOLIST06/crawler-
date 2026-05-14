@@ -65,6 +65,7 @@ def _is_indexable(page: CrawledPage) -> str:
 async def execute_run(db, run: Run, project):
     mission_type = run.mission_type or (run.config_snapshot or {}).get("mission_type", "simple_crawl")
     is_seo_audit = mission_type == "seo_technical_audit"
+    is_english_slugs_audit = mission_type == "english_slugs_fr_audit"
 
     run.status = "running"
     run.started_at = datetime.utcnow()
@@ -79,8 +80,8 @@ async def execute_run(db, run: Run, project):
     analyzers = [SEOAnalyzer(), LinkAnalyzer(), SlugAnalyzer()]
 
     seeds = [(project.start_url, 0, None)]
-    if is_seo_audit and project.start_url.endswith("2dolist.fr"):
-        seeds.append((f"{project.start_url.rstrip('/')}/sitemap.xml", 0, None))
+    if (is_seo_audit or is_english_slugs_audit) and "2dolist.fr" in project.start_url:
+        seeds.append((f"{project.start_url.rstrip('/')}/sitemap.xml", 0, "sitemap_seed"))
 
     q = deque(seeds)
     seen = set()
@@ -107,7 +108,12 @@ async def execute_run(db, run: Run, project):
         seen.add(n)
         try:
             fr = await fetcher.fetch(url)
-            parsed = parse_html(fr["text"]) if "html" in (fr.get("content_type") or "") else {"links": [], "resources": []}
+            is_xml = "xml" in (fr.get("content_type") or "") or (fr["final_url"] or "").endswith(".xml")
+            parsed = parse_html(fr["text"]) if "html" in (fr.get("content_type") or "") else {"links": [], "resources": [], "hreflangs": [], "prev": [], "next": []}
+            if is_xml and "<urlset" in (fr.get("text") or "") or "<sitemapindex" in (fr.get("text") or ""):
+                import re
+                locs = re.findall(r"<loc>(.*?)</loc>", fr.get("text") or "", flags=re.I)
+                parsed["sitemap_locs"] = locs
             page = CrawledPage(
                 run_id=run.id, requested_url=url, final_url=fr["final_url"], normalized_url=n, status_code=fr["status_code"],
                 content_type=fr.get("content_type"), depth=depth, fetch_mode=run.mode, title=parsed.get("title"),
@@ -127,7 +133,9 @@ async def execute_run(db, run: Run, project):
 
             internal_count = 0
             external_count = 0
-            for href in parsed.get("links", []):
+            for link_item in parsed.get("links", []):
+                href = link_item.get("href") if isinstance(link_item, dict) else link_item
+                anchor_text = link_item.get("anchor_text", "") if isinstance(link_item, dict) else ""
                 if not href:
                     continue
                 dest = normalize_url(href, fr["final_url"])
@@ -137,7 +145,7 @@ async def execute_run(db, run: Run, project):
                 internal_count += 1 if internal else 0
                 external_count += 0 if internal else 1
                 l = Link(
-                    run_id=run.id, source_url=fr["final_url"], destination_url=href, normalized_url=dest, anchor_text='',
+                    run_id=run.id, source_url=fr["final_url"], destination_url=href, normalized_url=dest, anchor_text=anchor_text,
                     link_type='a_href' if internal else 'external', is_internal=internal, is_external=not internal, is_crawlable=internal, found_at_depth=depth + 1
                 )
                 db.add(l)
@@ -148,6 +156,45 @@ async def execute_run(db, run: Run, project):
                     q.append((dest, depth + 1, fr["final_url"]))
             page.internal_links_count = internal_count
             page.external_links_count = external_count
+
+            if is_english_slugs_audit:
+                entries = []
+                for href_item in parsed.get("links", []):
+                    href = href_item.get("href") if isinstance(href_item, dict) else href_item
+                    if href:
+                        entries.append(("a_href", "Lien HTML <a href>", href, href_item.get("anchor_text", "") if isinstance(href_item, dict) else ""))
+                if parsed.get("canonical"):
+                    entries.append(("canonical", "Balise canonical", parsed.get("canonical"), ""))
+                for h in parsed.get("hreflangs", []):
+                    if h.get("href"):
+                        entries.append(("hreflang", "Balise hreflang", h.get("href"), ""))
+                for h in parsed.get("prev", []):
+                    entries.append(("prev", "Balise prev", h, ""))
+                for h in parsed.get("next", []):
+                    entries.append(("next", "Balise next", h, ""))
+                for h in parsed.get("sitemap_locs", []):
+                    entries.append(("sitemap", "Sitemap", h, ""))
+
+                for discovery_type, found_in, raw_url, anchor in entries:
+                    abs_url = normalize_url(raw_url, fr["final_url"])
+                    slug = _matched_english_slug(abs_url)
+                    if not slug:
+                        continue
+                    issue_type_map = {"a_href": "internal_link_to_english_slug", "sitemap": "sitemap_english_slug_url", "canonical": "canonical_english_slug_url", "hreflang": "hreflang_english_slug_url", "prev": "prev_next_english_slug_url", "next": "prev_next_english_slug_url"}
+                    issue_label_map = {"a_href": "Lien interne vers une URL avec slug anglais", "sitemap": "URL avec slug anglais présente dans le sitemap", "canonical": "Canonical vers une URL avec slug anglais", "hreflang": "Hreflang vers une URL avec slug anglais", "prev": "Prev/next vers une URL avec slug anglais", "next": "Prev/next vers une URL avec slug anglais"}
+                    if discovery_type == "a_href" and not _is_internal_crawlable_url(project, abs_url):
+                        continue
+                    db.add(Issue(run_id=run.id, issue_type=issue_type_map[discovery_type], severity="high", url=abs_url, source_url=fr["final_url"], details=f"discovery_type={discovery_type};found_in={found_in};anchor_text={anchor};matched_slug={slug};issue_label={issue_label_map[discovery_type]}"))
+
+                crawled_slug = _matched_english_slug(fr["final_url"])
+                if crawled_slug:
+                    db.add(Issue(run_id=run.id, issue_type="english_slug_url_on_fr", severity="high", url=fr["final_url"], source_url=fr["final_url"], details=f"discovery_type=crawled_url;found_in=URL crawlée;matched_slug={crawled_slug};issue_label=URL crawlée avec slug anglais"))
+
+            if is_xml:
+                for loc in parsed.get("sitemap_locs", []):
+                    dest = normalize_url(loc, fr["final_url"])
+                    if _is_internal_crawlable_url(project, dest) and depth + 1 <= run.max_depth:
+                        q.append((dest, depth + 1, fr["final_url"]))
 
             for r in parsed.get("resources", []):
                 db.add(Resource(run_id=run.id, source_url=fr['final_url'], resource_url=normalize_url(r['url'], fr['final_url']), resource_type=r['type'], tag_name=r['tag'], attribute_name=r['attr']))
@@ -176,6 +223,8 @@ async def execute_run(db, run: Run, project):
 
     if is_seo_audit:
         _generate_seo_exports(db, run.id)
+    if is_english_slugs_audit:
+        _generate_english_slugs_exports(db, run.id)
 
 
 def _generate_seo_exports(db, run_id: int):
@@ -281,3 +330,29 @@ def _generate_seo_exports(db, run_id: int):
         summary.append(f"- {sev}/{it}: {cnt}")
     summary += ["\n## Liste des corrections prioritaires dans l’ordre", "1. Corriger les slugs anglais internes.", "2. Corriger les URLs 404/500 et les liens cassés.", "3. Aligner canonical/hreflang/sitemap sur les URLs FR indexables."]
     (base / "seo_audit_summary.md").write_text("\n".join(summary), encoding="utf-8")
+
+
+def _generate_english_slugs_exports(db, run_id: int):
+    import json
+    pages = db.query(CrawledPage).filter_by(run_id=run_id).all()
+    issues = db.query(Issue).filter_by(run_id=run_id).all()
+    base = Path(settings.exports_dir) / f"run_{run_id}_english_slugs"
+    base.mkdir(parents=True, exist_ok=True)
+    rows = []
+    page_map = {normalize_url(p.final_url): p for p in pages}
+    for i in issues:
+        if i.issue_type not in {"internal_link_to_english_slug","sitemap_english_slug_url","canonical_english_slug_url","hreflang_english_slug_url","prev_next_english_slug_url","english_slug_url_on_fr"}:
+            continue
+        details = i.details or ""
+        parts = dict(kv.split("=",1) for kv in details.split(";") if "=" in kv)
+        p = page_map.get(normalize_url(i.url))
+        status = p.status_code if p else ""
+        final_url = p.final_url if p else i.url
+        rows.append({"issue_type": i.issue_type, "issue_label": parts.get("issue_label",""), "source_url": i.source_url or "", "found_url": i.url, "discovery_type": parts.get("discovery_type",""), "found_in": parts.get("found_in",""), "anchor_text": parts.get("anchor_text",""), "matched_slug": parts.get("matched_slug",""), "status_final": status, "final_url": final_url, "redirect_chain": " > ".join(p.redirect_chain or []) if p else "", "canonical": p.canonical if p else "", "was_crawled": "yes" if p else "no", "indexable_status": _is_indexable(p) if p else "unknown", "where_to_fix": "", "recommended_action": ""})
+    for r in rows:
+        dt=r["discovery_type"]
+        r["where_to_fix"]={"a_href":"Corriger le lien généré sur la page source : composant, contenu CMS ou fonction de génération d’URL.","sitemap":"Corriger la génération du sitemap.","canonical":"Corriger la canonical générée sur cette page.","hreflang":"Corriger les hreflang générés sur cette page.","prev":"Corriger les balises prev/next générées sur cette page.","next":"Corriger les balises prev/next générées sur cette page.","crawled_url":"Corriger la route ou la redirection de cette URL."}.get(dt,"")
+        r["recommended_action"]={"a_href":"Remplacer ce lien par l’URL française équivalente.","sitemap":"Retirer l’URL anglaise du sitemap ou la remplacer par l’URL française.","canonical":"Faire pointer la canonical vers l’URL française propre.","hreflang":"Faire pointer le hreflang fr-FR vers l’URL française.","prev":"Faire pointer prev/next vers une URL française correcte.","next":"Faire pointer prev/next vers une URL française correcte."}.get(dt,"Ajouter une redirection 301 vers l’URL française équivalente." if r["status_final"]==200 else "")
+    headers=["issue_type","issue_label","source_url","found_url","discovery_type","found_in","anchor_text","matched_slug","status_final","final_url","redirect_chain","canonical","was_crawled","indexable_status","where_to_fix","recommended_action"]
+    _write_csv(base / "english_slugs_fr_audit.csv", headers, rows)
+    (base / "english_slugs_fr_audit.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
