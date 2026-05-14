@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./crawler.db"
+    exports_dir: str = "exports"
     app_secret_key: str = "change-me"
     admin_username: str = "admin"
     admin_password: str = "admin"
