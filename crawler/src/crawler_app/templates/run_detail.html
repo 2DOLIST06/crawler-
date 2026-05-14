@@ -1,1 +1,25 @@
-{% extends 'base.html' %}{% block content %}<h1>Run {{run.id}}</h1><p>Status {{run.status}}</p><a href='/exports/run/{{run.id}}/pages.csv'>Export pages CSV</a><h2>Pages</h2><ul>{% for p in pages %}<li>{{p.status_code}} {{p.final_url}} depth={{p.depth}}</li>{% endfor %}</ul><h2>Issues</h2><ul>{% for i in issues %}<li>{{i.severity}} {{i.issue_type}} {{i.url}}</li>{% endfor %}</ul><canvas id='sc'></canvas><script>const c={};{% for p in pages %}c[{{p.status_code or 0}}]=(c[{{p.status_code or 0}}]||0)+1;{% endfor %}new Chart(document.getElementById('sc'),{type:'bar',data:{labels:Object.keys(c),datasets:[{data:Object.values(c)}]}})</script>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Run {{run.id}}{% endblock %}
+{% block content %}
+<section class="stats-grid">
+  <div class="stat-card"><span>Statut</span><strong>{{run.status}}</strong></div>
+  <div class="stat-card"><span>Pages crawlées</span><strong>{{run.pages_crawled}}</strong></div>
+  <div class="stat-card"><span>Liens trouvés</span><strong>{{run.links_found}}</strong></div>
+  <div class="stat-card"><span>Issues</span><strong>{{run.issues_found}}</strong></div>
+</section>
+<section class="card"><h2>Résumé</h2><p>Début: {{run.started_at}}</p><p>Fin: {{run.finished_at}}</p><p>Durée: {{duration or 'N/A'}}</p><p>Mode: {{run.mode}} | Max pages: {{run.max_pages}} | Max depth: {{run.max_depth}}</p></section>
+<section class="tabs"><a href="#resume">Résumé</a><a href="#pages">Pages</a><a href="#links">Liens</a><a href="#issues">Issues</a><a href="#resources">Ressources</a><a href="#exports">Exports</a></section>
+<section id="resume" class="card"><h3>Graphiques</h3><div class="charts-grid">{% for key, title in [('status_codes','Status codes'),('issues_by_type','Issues par type'),('issues_by_severity','Issues par sévérité'),('pages_by_depth','Pages par profondeur')] %}<div class="chart-box"><h4>{{title}}</h4>{% if chart_stats[key].labels|length == 0 %}<p class="empty">{{chart_stats[key].empty_message}}</p>{% else %}<canvas id="chart_{{key}}"></canvas>{% endif %}</div>{% endfor %}</div></section>
+<section id="pages" class="card"><h3>Pages</h3><form class="filters" method="get"><label>Status code<select name="status_code"><option value="">Tous</option>{% for s in status_options %}<option value="{{s}}" {% if filters.status_code==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select></label><label>Recherche URL<input name="page_q" value="{{filters.page_q}}"></label><button class="btn">Filtrer</button></form><table><thead><tr><th>Status</th><th>URL</th><th>Depth</th><th>Title</th><th>Meta description</th><th>Canonical</th><th>H1 count</th><th>Internal links</th><th>External links</th></tr></thead><tbody>{% for p in pages %}<tr><td>{{p.status_code}}</td><td class="url">{{p.final_url}}</td><td>{{p.depth}}</td><td>{{p.title}}</td><td>{{p.meta_description}}</td><td>{{p.canonical}}</td><td>{{p.h1_count}}</td><td>{{p.internal_links_count}}</td><td>{{p.external_links_count}}</td></tr>{% endfor %}</tbody></table></section>
+<section id="links" class="card"><h3>Liens ({{links|length}})</h3></section>
+<section id="issues" class="card"><h3>Issues</h3><form class="filters" method="get"><label>Sévérité<select name="severity"><option value="">Toutes</option>{% for s in severity_options %}<option value="{{s}}" {% if filters.severity==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select></label><label>Type<select name="issue_type"><option value="">Tous</option>{% for t in issue_type_options %}<option value="{{t}}" {% if filters.issue_type==t %}selected{% endif %}>{{t}}</option>{% endfor %}</select></label><button class="btn">Filtrer</button></form><table><thead><tr><th>Severity</th><th>Issue type</th><th>URL</th><th>Source URL</th><th>Details</th></tr></thead><tbody>{% for i in issues %}<tr><td>{{i.severity}}</td><td>{{i.issue_type}}</td><td class="url">{{i.url}}</td><td class="url">{{i.source_url}}</td><td>{{i.details}}</td></tr>{% endfor %}</tbody></table></section>
+<section id="resources" class="card"><h3>Ressources ({{resources|length}})</h3></section>
+<section id="exports" class="card"><h3>Exports</h3><div class="export-links"><a href='/exports/run/{{run.id}}/pages.csv'>pages CSV</a><a href='/exports/run/{{run.id}}/links.csv'>links CSV</a><a href='/exports/run/{{run.id}}/issues.csv'>issues CSV</a><a href='/exports/run/{{run.id}}/resources.csv'>resources CSV</a><a href='/exports/run/{{run.id}}/full.json'>full run JSON</a></div></section>
+<script>
+const stats={{ chart_stats|tojson }};
+for (const [key, cfg] of Object.entries(stats)) {
+  const el=document.getElementById('chart_'+key); if(!el||!cfg.labels.length){continue;}
+  new Chart(el,{type:'bar',data:{labels:cfg.labels,datasets:[{label:key,data:cfg.data}]},options:{plugins:{legend:{display:false}}}})
+}
+</script>
+{% endblock %}

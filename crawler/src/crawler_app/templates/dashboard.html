@@ -1,1 +1,4 @@
-{% extends 'base.html' %}{% block content %}<h1>Dashboard</h1><p>Projects: {{projects}}</p><p>Runs: {{runs}}</p>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="stats-grid"><div class="stat-card"><span>Projets</span><strong>{{projects}}</strong></div><div class="stat-card"><span>Runs</span><strong>{{runs}}</strong></div></div>
+{% endblock %}
