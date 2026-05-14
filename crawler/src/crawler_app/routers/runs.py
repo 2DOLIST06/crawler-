@@ -95,23 +95,23 @@ def _where_to_fix(discovery_type: str, target_status_code: int | None) -> str:
     if discovery_type == 'hreflang':
         return 'Corriger les balises hreflang générées pour cette page.'
     if target_status_code == 200:
-        return 'Ajouter ou corriger la redirection 301 vers l'URL française équivalente, ou empêcher cette route d'être servie en 200.'
-    return 'Corriger à la source de génération de l'URL problématique (template, CMS, règle SEO ou routage).'
+        return "Ajouter ou corriger la redirection 301 vers l'URL française équivalente, ou empêcher cette route d'être servie en 200."
+    return "Corriger à la source de génération de l'URL problématique (template, CMS, règle SEO ou routage)."
 
 
 def _recommended_action(fix_category: str, discovery_type: str, is_english_200: bool) -> str:
     if is_english_200:
-        return 'Ajouter une redirection 301 de l'URL anglaise vers l'URL française.'
+        return "Ajouter une redirection 301 de l'URL anglaise vers l'URL française."
     if discovery_type == 'sitemap':
         return 'Retirer cette URL du sitemap.'
     if discovery_type == 'canonical':
-        return 'Corriger la canonical pour pointer vers l'URL française propre.'
+        return "Corriger la canonical pour pointer vers l'URL française propre."
     if discovery_type == 'hreflang':
         return 'Corriger hreflang fr-FR pour pointer vers la page française.'
     if discovery_type == 'a_href':
-        return 'Remplacer le lien interne par l'URL française.'
+        return "Remplacer le lien interne par l'URL française."
     if fix_category == 'robots':
-        return 'Ajouter noindex ou canonical vers l'URL propre pour cette URL à paramètre.'
+        return "Ajouter noindex ou canonical vers l'URL propre pour cette URL à paramètre."
     return 'Corriger ou supprimer le lien cassé.'
 
 
