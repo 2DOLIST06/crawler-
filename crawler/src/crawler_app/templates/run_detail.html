@@ -19,8 +19,12 @@
 {% if run.status == 'running' %}<p class="ok">Crawl en cours.</p>{% endif %}
 {% if run.status in ['pending', 'running'] %}
 <p><strong>Progression actuelle :</strong> {{run.pages_crawled}} pages crawlées, {{run.links_found}} liens trouvés, {{run.issues_found}} issues trouvées.</p>
+<p><strong>Dernière URL crawlée :</strong> {{run.last_crawled_url or 'N/A'}}</p>
+<p><strong>Dernière mise à jour :</strong> {{run.updated_at or 'N/A'}}</p>
+<p><strong>Pages :</strong> {{run.pages_crawled}} / {{run.max_pages}}</p>
 <p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir</a></p>
 {% endif %}
+{% if run.status == 'failed' %}<p class="warn"><strong>Erreur :</strong> {{run.error_message or 'N/A'}}</p>{% endif %}
 </section>
 
 <section class="card"><h3>Ce qu’il faut corriger en priorité</h3>

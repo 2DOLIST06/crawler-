@@ -31,8 +31,10 @@ class Run(Base):
     pages_crawled: Mapped[int] = mapped_column(Integer, default=0)
     links_found: Mapped[int] = mapped_column(Integer, default=0)
     issues_found: Mapped[int] = mapped_column(Integer, default=0)
+    last_crawled_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     config_snapshot: Mapped[dict] = mapped_column(JSON, default={})
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     project = relationship("Project", back_populates="runs")
 
 class CrawledPage(Base):
