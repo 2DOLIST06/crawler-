@@ -1,1 +1,7 @@
-{% extends 'base.html' %}{% block content %}<h1>{{project.name}}</h1><form method='post' action='/runs/create/{{project.id}}'><select name='mode'><option>http</option><option>browser</option></select><input name='max_pages' value='{{project.default_max_pages}}'><input name='max_depth' value='{{project.default_max_depth}}'><button>Run</button></form><ul>{% for r in runs %}<li><a href='/runs/{{r.id}}'>Run {{r.id}} {{r.status}}</a></li>{% endfor %}</ul>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Projet {{project.name}}{% endblock %}
+{% block content %}
+<section class="card"><h2>{{project.name}}</h2><p>URL: {{project.start_url}}</p></section>
+<section class="card"><h3>Lancer un run</h3><form method='post' action='/runs/create/{{project.id}}' class="form-grid"><label>Mode<select name='mode'><option>http</option><option>browser</option></select></label><label>Max pages<input type="number" name='max_pages' value='{{project.default_max_pages}}'></label><label>Max depth<input type="number" name='max_depth' value='{{project.default_max_depth}}'></label><button class="btn">Lancer</button></form></section>
+<section class="card"><h3>Runs</h3><table><thead><tr><th>ID</th><th>Status</th><th>Mode</th><th>Action</th></tr></thead><tbody>{% for r in runs %}<tr><td>{{r.id}}</td><td>{{r.status}}</td><td>{{r.mode}}</td><td><a class="btn-link" href='/runs/{{r.id}}'>Voir détail</a></td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

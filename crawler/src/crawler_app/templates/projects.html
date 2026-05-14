@@ -1,1 +1,6 @@
-{% extends 'base.html' %}{% block content %}<h1>Projects</h1><form method='post'><input name='name'><input name='start_url'><input name='allowed_domain'><label><input type='checkbox' name='same_host_only'>same host</label><button>Create</button></form><ul>{% for p in projects %}<li><a href='/projects/{{p.id}}'>{{p.name}}</a></li>{% endfor %}</ul>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Projets{% endblock %}
+{% block content %}
+<section class="card"><h2>Nouveau projet</h2><form method='post' class="form-grid"><label>Nom<input name='name' required></label><label>URL de départ<input name='start_url' required></label><label>Domaine autorisé<input name='allowed_domain' required></label><label><input type='checkbox' name='same_host_only'> Même host uniquement</label><button class="btn">Créer</button></form></section>
+<section class="card"><h2>Liste des projets</h2><table><thead><tr><th>Nom</th><th>Action</th></tr></thead><tbody>{% for p in projects %}<tr><td>{{p.name}}</td><td><a class="btn-link" href='/projects/{{p.id}}'>Ouvrir</a></td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

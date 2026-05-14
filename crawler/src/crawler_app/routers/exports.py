@@ -35,3 +35,17 @@ def export_csv(run_id:int,kind:str,db:Session=Depends(get_db)):
     payload = out.getvalue()
     _save_export_file(run_id, kind, "csv", payload)
     return StreamingResponse(iter([payload]),media_type='text/csv')
+
+@router.get('/run/{run_id}/full.json')
+def export_full_json(run_id:int,db:Session=Depends(get_db)):
+    payload = {
+        'pages': [r.__dict__ for r in db.query(CrawledPage).filter_by(run_id=run_id).all()],
+        'links': [r.__dict__ for r in db.query(Link).filter_by(run_id=run_id).all()],
+        'issues': [r.__dict__ for r in db.query(Issue).filter_by(run_id=run_id).all()],
+        'resources': [r.__dict__ for r in db.query(Resource).filter_by(run_id=run_id).all()],
+    }
+    for rows in payload.values():
+        for r in rows: r.pop('_sa_instance_state',None)
+    dumped = json.dumps(payload, default=str, ensure_ascii=False, indent=2)
+    _save_export_file(run_id, 'full', 'json', dumped)
+    return StreamingResponse(io.BytesIO(dumped.encode('utf-8')),media_type='application/json')
