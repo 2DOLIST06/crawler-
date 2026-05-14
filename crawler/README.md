@@ -1,27 +1,26 @@
 # crawler
+Plateforme web de crawl générique avec FastAPI, PostgreSQL, SQLAlchemy et modules d'analyse extensibles.
 
-Crawler web externe générique autonome en Python 3.11+.
+## Architecture
+Voir `src/crawler_app` : routers web, moteur de crawl, fetchers HTTP/Browser, analyzers SEO/links/slugs/resources, services, templates Jinja2.
 
-## Objectif
-Ce projet crawl un site comme un visiteur externe depuis une URL de départ, sans accès backend/base de données.
+## Lancer en local
+1. `pip install -r requirements.txt`
+2. `playwright install chromium`
+3. Configurer `DATABASE_URL`, `APP_SECRET_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`.
+4. `alembic upgrade head`
+5. `uvicorn crawler_app.main:app --reload`
 
-## Installation
-```bash
-pip install -r requirements.txt
-playwright install chromium
-```
+## Déploiement Render
+- Utiliser `Dockerfile` et `render.yaml`.
+- Render crée un web service + PostgreSQL.
 
-## Exécution
-```bash
-python -m crawler.cli crawl --start-url https://www.2dolist.fr --allowed-domain www.2dolist.fr
-python -m crawler.cli crawl --start-url https://www.2dolist.fr --allowed-domain www.2dolist.fr --max-pages 500 --max-depth 5
-python -m crawler.cli crawl --start-url https://www.2dolist.fr --allowed-domain www.2dolist.fr --mode http
-python -m crawler.cli crawl --start-url https://www.2dolist.fr --allowed-domain www.2dolist.fr --mode browser
-```
+## Utilisation
+- Connexion via `/login`.
+- Créer un projet avec URL de départ (ex: `https://www.2dolist.fr`).
+- Lancer un run (mode http ou browser).
+- Consulter pages, liens, ressources, issues, graphiques.
+- Export CSV/JSON depuis détail de run.
 
-## Rapports
-Les exports CSV/JSON sont générés dans `reports/` : pages, links, resources, issues, seo, slugs, crawl.json.
-
-## Limites connues
-- Détection JS très complexe non exhaustive.
-- Vérification du status code des liens individuels non systématique.
+## Ajouter un analyzer
+Créer une classe dans `src/crawler_app/crawler/analyzers/` héritée de `BaseAnalyzer` avec `name`, `analyze_page`, `analyze_link`, `analyze_resource`, puis l’enregistrer dans le service de crawl.

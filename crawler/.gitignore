@@ -1,8 +1,8 @@
 __pycache__/
 *.pyc
+.venv/
+.env
+alembic/.env
+.playwright/
 .pytest_cache/
 .ruff_cache/
-.venv/
-reports/*.csv
-reports/*.json
-!reports/.gitkeep

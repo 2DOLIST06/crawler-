@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Projects</h1><form method='post'><input name='name'><input name='start_url'><input name='allowed_domain'><label><input type='checkbox' name='same_host_only'>same host</label><button>Create</button></form><ul>{% for p in projects %}<li><a href='/projects/{{p.id}}'>{{p.name}}</a></li>{% endfor %}</ul>{% endblock %}
