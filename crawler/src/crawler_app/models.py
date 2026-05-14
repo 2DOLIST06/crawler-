@@ -23,6 +23,7 @@ class Run(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
     status: Mapped[str] = mapped_column(String(20), default="pending")
     mode: Mapped[str] = mapped_column(String(20), default="http")
+    mission_type: Mapped[str] = mapped_column(String(50), default="simple_crawl")
     max_pages: Mapped[int] = mapped_column(Integer)
     max_depth: Mapped[int] = mapped_column(Integer)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

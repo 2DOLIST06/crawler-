@@ -10,7 +10,7 @@
 </section>
 <section class="card">
   <h3>Dernier run lancé</h3>
-  {% if latest_run %}<p>Run #{{latest_run.id}} — statut <strong>{{latest_run.status}}</strong> — démarré le {{latest_run.started_at or 'N/A'}}</p><a class="btn-link" href="/runs/{{latest_run.id}}">Voir ce rapport</a>{% else %}<p>Aucun run pour le moment.</p>{% endif %}
+  {% if latest_run %}<p>Run #{{latest_run.id}} — mission <strong>{{latest_run.mission_type or latest_run.config_snapshot.get('mission_type','simple_crawl')}}</strong> — statut <strong>{{latest_run.status}}</strong> — démarré le {{latest_run.started_at or 'N/A'}}</p><a class="btn-link" href="/runs/{{latest_run.id}}">Voir ce rapport</a>{% else %}<p>Aucun run pour le moment.</p>{% endif %}
 </section>
 <section class="card">
   <h3>Liens rapides</h3>

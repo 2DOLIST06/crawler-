@@ -22,10 +22,10 @@ def list_runs(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post('/create/{project_id}')
-def create_run(project_id: int, request: Request, mission: str = Form('simple'), mode: str = Form('http'), max_pages: int = Form(100), max_depth: int = Form(3), delay_seconds: float = Form(0.2), respect_robots_txt: bool = Form(False), db: Session = Depends(get_db)):
+def create_run(project_id: int, request: Request, mission_type: str = Form(...), mode: str = Form('http'), max_pages: int = Form(100), max_depth: int = Form(3), delay: float = Form(0.2), respect_robots: bool = Form(False), db: Session = Depends(get_db)):
     if not is_auth(request):
         return RedirectResponse('/login', 302)
-    run = Run(project_id=project_id, mode=mode, max_pages=max_pages, max_depth=max_depth, config_snapshot={'mission': mission, 'mode': mode, 'max_pages': max_pages, 'max_depth': max_depth, 'delay_seconds': delay_seconds, 'respect_robots_txt': respect_robots_txt})
+    run = Run(project_id=project_id, mode=mode, mission_type=mission_type, max_pages=max_pages, max_depth=max_depth, config_snapshot={'mission_type': mission_type, 'mode': mode, 'max_pages': max_pages, 'max_depth': max_depth, 'delay': delay, 'respect_robots': respect_robots})
     db.add(run)
     db.commit()
     db.refresh(run)
