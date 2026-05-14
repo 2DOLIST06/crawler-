@@ -18,7 +18,7 @@ def is_auth(req:Request)->bool:
 def login_page(request:Request): return templates.TemplateResponse('login.html',{'request':request})
 @router.post('/login')
 def login(username:str=Form(), password:str=Form()):
-    if username==settings.admin_username and password==settings.admin_password:
+    if settings.admin_username and settings.admin_password and username==settings.admin_username and password==settings.admin_password:
         resp=RedirectResponse('/',302); resp.set_cookie('session',ser.dumps({'u':username}),httponly=True); return resp
     return RedirectResponse('/login',302)
 @router.get('/logout')
