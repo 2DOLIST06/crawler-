@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict, deque
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 import csv
 
 from crawler_app.config import settings
@@ -33,6 +34,18 @@ def _write_csv(path: Path, headers: list[str], rows: list[dict]):
         for row in rows:
             w.writerow({k: row.get(k) for k in headers})
 
+
+
+
+def _is_internal_crawlable_url(project, normalized_url: str) -> bool:
+    parsed = urlparse(normalized_url or "")
+    host = (parsed.netloc or "").lower()
+    allowed_domain = (project.allowed_domain or "").lower()
+    if not host or not allowed_domain:
+        return False
+    if project.same_host_only:
+        return host == allowed_domain
+    return host == allowed_domain
 
 def _is_indexable(page: CrawledPage) -> str:
     if page.status_code != 200:
@@ -95,12 +108,12 @@ async def execute_run(db, run: Run, project):
                 dest = normalize_url(href, fr["final_url"])
                 if _is_ignored_url(dest):
                     continue
-                internal = project.allowed_domain in dest
+                internal = _is_internal_crawlable_url(project, dest)
                 internal_count += 1 if internal else 0
                 external_count += 0 if internal else 1
                 l = Link(
                     run_id=run.id, source_url=fr["final_url"], destination_url=href, normalized_url=dest, anchor_text='',
-                    link_type='a_href', is_internal=internal, is_external=not internal, is_crawlable=internal, found_at_depth=depth + 1
+                    link_type='a_href' if internal else 'external', is_internal=internal, is_external=not internal, is_crawlable=internal, found_at_depth=depth + 1
                 )
                 db.add(l)
                 run.links_found += 1

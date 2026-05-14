@@ -1,9 +1,9 @@
 import asyncio
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from crawler_app.database import get_db
+from crawler_app.database import SessionLocal, get_db
 from crawler_app.models import Run, Project, CrawledPage, Link, Issue, Resource
 from crawler_app.routers.auth import is_auth
 from crawler_app.services.crawl_service import execute_run
@@ -179,16 +179,42 @@ def list_runs(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse('runs.html', {'request': request, 'runs': runs})
 
 
+def run_crawl_background(run_id: int):
+    db = SessionLocal()
+    try:
+        run = db.get(Run, run_id)
+        if not run:
+            return
+        project = db.get(Project, run.project_id)
+        if not project:
+            run.status = 'failed'
+            run.error_message = 'Project not found.'
+            db.commit()
+            return
+        run.status = 'running'
+        run.error_message = None
+        db.commit()
+        asyncio.run(execute_run(db, run, project))
+    except Exception as exc:
+        run = db.get(Run, run_id)
+        if run:
+            run.status = 'failed'
+            run.error_message = str(exc)
+            db.commit()
+    finally:
+        db.close()
+
+
 @router.post('/create/{project_id}')
-def create_run(project_id: int, request: Request, mission_type: str = Form(...), mode: str = Form('http'), max_pages: int = Form(100), max_depth: int = Form(3), delay: float = Form(0.2), respect_robots: bool = Form(False), db: Session = Depends(get_db)):
+def create_run(project_id: int, request: Request, background_tasks: BackgroundTasks, mission_type: str = Form(...), mode: str = Form('http'), max_pages: int = Form(100), max_depth: int = Form(3), delay: float = Form(0.2), respect_robots: bool = Form(False), db: Session = Depends(get_db)):
     if not is_auth(request):
         return RedirectResponse('/login', 302)
-    run = Run(project_id=project_id, mode=mode, mission_type=mission_type, max_pages=max_pages, max_depth=max_depth, config_snapshot={'mission_type': mission_type, 'mode': mode, 'max_pages': max_pages, 'max_depth': max_depth, 'delay': delay, 'respect_robots': respect_robots})
+    run = Run(project_id=project_id, status='pending', mode=mode, mission_type=mission_type, max_pages=max_pages, max_depth=max_depth, config_snapshot={'mission_type': mission_type, 'mode': mode, 'max_pages': max_pages, 'max_depth': max_depth, 'delay': delay, 'respect_robots': respect_robots})
     db.add(run)
     db.commit()
     db.refresh(run)
-    asyncio.run(execute_run(db, run, db.get(Project, project_id)))
-    return RedirectResponse(f'/runs/{run.id}', 302)
+    background_tasks.add_task(run_crawl_background, run.id)
+    return RedirectResponse(f'/runs/{run.id}', status_code=303)
 
 
 @router.get('/{run_id}')

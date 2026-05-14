@@ -15,6 +15,12 @@
     <div class="stat-card"><span>Liens cassés</span><strong>{{all_enriched|selectattr('raw.issue_type','equalto','broken_internal_link')|list|length}}</strong></div>
   </div>
   {% if run.pages_crawled == run.max_pages %}<p class="warn">Attention : limite atteinte, audit partiel.</p>{% endif %}
+{% if run.status == 'pending' %}<p class="warn">Le crawl est en attente de démarrage.</p>{% endif %}
+{% if run.status == 'running' %}<p class="ok">Crawl en cours.</p>{% endif %}
+{% if run.status in ['pending', 'running'] %}
+<p><strong>Progression actuelle :</strong> {{run.pages_crawled}} pages crawlées, {{run.links_found}} liens trouvés, {{run.issues_found}} issues trouvées.</p>
+<p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir</a></p>
+{% endif %}
 </section>
 
 <section class="card"><h3>Ce qu’il faut corriger en priorité</h3>
@@ -36,3 +42,9 @@
 <details class="card"><summary>Détail des liens</summary><p>{{links|length}} liens trouvés.</p></details>
 <details class="card"><summary>Détail des ressources</summary><p>{{resources|length}} ressources détectées.</p></details>
 {% endblock %}
+
+{% if run.status in ['pending', 'running'] %}
+<script>
+setTimeout(function () { window.location.reload(); }, 5000);
+</script>
+{% endif %}
