@@ -1,4 +1,19 @@
 {% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="stats-grid"><div class="stat-card"><span>Projets</span><strong>{{projects}}</strong></div><div class="stat-card"><span>Runs</span><strong>{{runs}}</strong></div></div>
+<h2>Dashboard</h2>
+<section class="stats-grid">
+  <div class="stat-card"><span>Nombre de projets</span><strong>{{projects_count}}</strong></div>
+  <div class="stat-card"><span>Nombre de runs</span><strong>{{runs_count}}</strong></div>
+  <div class="stat-card"><span>Total pages crawlées</span><strong>{{total_pages}}</strong></div>
+  <div class="stat-card"><span>Total issues détectées</span><strong>{{total_issues}}</strong></div>
+</section>
+<section class="card">
+  <h3>Dernier run lancé</h3>
+  {% if latest_run %}<p>Run #{{latest_run.id}} — statut <strong>{{latest_run.status}}</strong> — démarré le {{latest_run.started_at or 'N/A'}}</p><a class="btn-link" href="/runs/{{latest_run.id}}">Voir ce rapport</a>{% else %}<p>Aucun run pour le moment.</p>{% endif %}
+</section>
+<section class="card">
+  <h3>Liens rapides</h3>
+  <div class="btn-row"><a class="btn-link" href="/projects">Créer un projet</a><a class="btn-link" href="/projects">Lancer un crawl</a><a class="btn-link" href="/runs">Voir les derniers rapports</a></div>
+</section>
 {% endblock %}
