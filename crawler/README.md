@@ -112,3 +112,20 @@ puis l’enregistrer dans le service de crawl.
 
 
 En mode `production`, définissez explicitement `ADMIN_USERNAME` et `ADMIN_PASSWORD` (pas de fallback implicite).
+
+
+## Migrations (important)
+
+Le schéma est versionné avec **Alembic**. Après un `git pull` (ou après l’ajout de nouvelles colonnes/tables), appliquez toujours les migrations avant de démarrer l’app :
+
+```bash
+alembic upgrade head
+```
+
+Ensuite lancez le serveur :
+
+```bash
+PYTHONPATH=src uvicorn crawler_app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Cette étape garantit la compatibilité des bases existantes (SQLite locale et PostgreSQL) avec les nouveaux champs comme `runs.mission_type`.
