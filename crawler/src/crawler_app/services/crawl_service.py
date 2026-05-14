@@ -64,7 +64,13 @@ async def execute_run(db, run: Run, project):
 
     run.status = "running"
     run.started_at = datetime.utcnow()
+    run.updated_at = datetime.utcnow()
+    run.error_message = None
     db.commit()
+    print(
+        f"[run {run.id}] Starting crawl project={project.id} start_url={project.start_url} "
+        f"mode={run.mode} max_pages={run.max_pages} max_depth={run.max_depth}"
+    )
     fetcher = HttpFetcher() if run.mode == "http" else BrowserFetcher()
     analyzers = [SEOAnalyzer(), LinkAnalyzer(), SlugAnalyzer()]
 
@@ -78,8 +84,22 @@ async def execute_run(db, run: Run, project):
     while q and run.pages_crawled < run.max_pages:
         url, depth, src = q.popleft()
         n = normalize_url(url)
-        if n in seen or depth > run.max_depth or _is_ignored_url(url):
+        if n in seen:
+            print(f"[run {run.id}] Skipped already visited url={url}")
             continue
+        if depth > run.max_depth:
+            print(f"[run {run.id}] Skipped out of domain url={url}")
+            continue
+        if _is_ignored_url(url):
+            print(f"[run {run.id}] Skipped external url={url}")
+            continue
+        if not _is_internal_crawlable_url(project, n):
+            print(f"[run {run.id}] Skipped out of domain url={url}")
+            continue
+        print(
+            f"[run {run.id}] Crawling page {run.pages_crawled + 1}/{run.max_pages} "
+            f"depth={depth} queue={len(q)} url={url}"
+        )
         seen.add(n)
         try:
             fr = await fetcher.fetch(url)
@@ -96,6 +116,7 @@ async def execute_run(db, run: Run, project):
             db.add(page)
             db.flush()
             run.pages_crawled += 1
+            run.last_crawled_url = fr["final_url"]
 
             for it, sev in analyzers[0].analyze_page({**parsed, "status_code": fr["status_code"], "final_url": fr["final_url"], "content_type": fr.get("content_type")}):
                 db.add(Issue(run_id=run.id, issue_type=it, severity=sev, url=fr["final_url"]))
@@ -128,15 +149,26 @@ async def execute_run(db, run: Run, project):
                 db.add(Resource(run_id=run.id, source_url=fr['final_url'], resource_url=normalize_url(r['url'], fr['final_url']), resource_type=r['type'], tag_name=r['tag'], attribute_name=r['attr']))
             for it, sev in analyzers[2].analyze_page({"final_url": fr["final_url"]}):
                 db.add(Issue(run_id=run.id, issue_type=it, severity=sev, url=fr["final_url"]))
+            run.issues_found = db.query(Issue).filter(Issue.run_id == run.id).count()
+            run.updated_at = datetime.utcnow()
             db.commit()
+            print(
+                f"[run {run.id}] Done status={fr['status_code']} links={run.links_found} "
+                f"issues={run.issues_found} url={fr['final_url']}"
+            )
         except Exception as e:
             db.add(Issue(run_id=run.id, issue_type='fetch_error', severity='error', url=url, details=str(e)))
+            run.issues_found = db.query(Issue).filter(Issue.run_id == run.id).count()
+            run.updated_at = datetime.utcnow()
             db.commit()
+            print(f"[run {run.id}] Error url={url} error={e}")
 
     run.status = 'completed'
     run.finished_at = datetime.utcnow()
+    run.updated_at = datetime.utcnow()
     run.issues_found = db.query(Issue).filter(Issue.run_id == run.id).count()
     db.commit()
+    print(f"[run {run.id}] Completed pages={run.pages_crawled} links={run.links_found} issues={run.issues_found}")
 
     if is_seo_audit:
         _generate_seo_exports(db, run.id)

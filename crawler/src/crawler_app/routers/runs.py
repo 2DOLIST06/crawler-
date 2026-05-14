@@ -180,6 +180,7 @@ def list_runs(request: Request, db: Session = Depends(get_db)):
 
 
 def run_crawl_background(run_id: int):
+    print(f"[run {run_id}] Background task started")
     db = SessionLocal()
     try:
         run = db.get(Run, run_id)
@@ -194,8 +195,10 @@ def run_crawl_background(run_id: int):
         run.status = 'running'
         run.error_message = None
         db.commit()
+        print(f"[run {run_id}] Calling execute_run")
         asyncio.run(execute_run(db, run, project))
     except Exception as exc:
+        print(f"[run {run_id}] Failed error={exc}")
         run = db.get(Run, run_id)
         if run:
             run.status = 'failed'
