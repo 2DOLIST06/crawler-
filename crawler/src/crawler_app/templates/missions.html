@@ -2,6 +2,20 @@
 {% block title %}Missions{% endblock %}
 {% block content %}
 <h2>Missions disponibles</h2>
-<section class="card"><h3>Crawl simple</h3><p>Explore les pages, liens, statuts HTTP et métadonnées principales.</p><p><strong>Contrôles :</strong> URLs, titres, meta descriptions, maillage.</p><p><strong>Exports :</strong> pages CSV/JSON, links CSV/JSON, resources CSV/JSON, full JSON.</p></section>
-<section class="card"><h3>SEO Technical Audit</h3><p>Lance un crawl orienté qualité SEO technique et issues prioritaires.</p><p><strong>Contrôles :</strong> indexabilité, headings, canonicals, erreurs techniques.</p><p><strong>Exports :</strong> issues CSV/JSON, pages CSV/JSON, résumé global via rapport de run.</p></section>
+<section class="card">
+  <h3>Crawl simple</h3>
+  <p>Exploration technique de base pour valider rapidement la structure d'un site.</p>
+  <p><strong>Niveau :</strong> Simple</p>
+  <p><strong>Modules utilisés :</strong> discovery HTTP, statuts, metadata de base, liens internes.</p>
+  <p><strong>Exports disponibles :</strong> pages CSV/JSON, links CSV/JSON, resources CSV/JSON, full JSON.</p>
+  <a class="btn-link" href="/missions/simple-crawl">Voir le détail</a>
+</section>
+<section class="card">
+  <h3>SEO Technical Audit</h3>
+  <p>Audit SEO technique approfondi pour détecter et prioriser les anomalies qui freinent l'indexation.</p>
+  <p><strong>Niveau :</strong> Avancé</p>
+  <p><strong>Modules utilisés :</strong> sitemap, canonical, hreflang, indexabilité, maillage, pagination, metadata, performance crawlable.</p>
+  <p><strong>Exports disponibles :</strong> issues, tableaux thématiques SEO, résumé markdown et run complet JSON.</p>
+  <a class="btn-link" href="/missions/seo-technical-audit">Voir le détail</a>
+</section>
 {% endblock %}

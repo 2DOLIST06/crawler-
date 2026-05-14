@@ -43,6 +43,21 @@ def missions(request: Request):
     return templates.TemplateResponse('missions.html', {'request': request})
 
 
+
+
+@router.get('/missions/simple-crawl')
+def mission_simple_crawl(request: Request):
+    if not is_auth(request):
+        return RedirectResponse('/login', 302)
+    return templates.TemplateResponse('mission_simple_crawl.html', {'request': request})
+
+
+@router.get('/missions/seo-technical-audit')
+def mission_seo_technical_audit(request: Request):
+    if not is_auth(request):
+        return RedirectResponse('/login', 302)
+    return templates.TemplateResponse('mission_seo_technical_audit.html', {'request': request})
+
 @router.get('/exports')
 def exports_page(request: Request):
     if not is_auth(request):
