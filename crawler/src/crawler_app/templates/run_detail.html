@@ -34,15 +34,17 @@
 </tbody></table></div>{% endif %}
 </section>
 
-<section class="card"><h3>URLs anglaises sur le domaine français</h3>
-{% if english_counts.total == 0 %}<p class="ok">Aucune URL anglaise détectée dans les liens crawlables, sitemap, canonical ou hreflang de ce run.</p>
-{% else %}<p>Total: {{english_counts.total}} | Liens: {{english_counts.a_href}} | Sitemap: {{english_counts.sitemap}} | Canonical: {{english_counts.canonical}} | Hreflang: {{english_counts.hreflang}} | Répondent en 200: {{english_counts.is_200}}</p>{% endif %}
+<section class="card"><h3>Slugs anglais détectés</h3>
+{% if english_counts.total == 0 %}<p class="ok">Aucun vrai slug anglais détecté. Les URLs contenant /activities/ ne sont pas comptées comme URLs anglaises.</p>
+{% else %}
+<p>URLs elles-mêmes avec slug anglais: {{english_counts.url_on_fr}} | Liens internes vers slug anglais: {{english_counts.a_href}} | URLs sitemap avec slug anglais: {{english_counts.sitemap}} | Canonicals vers slug anglais: {{english_counts.canonical}} | Hreflang vers slug anglais: {{english_counts.hreflang}}</p>
+{% endif %}
 </section>
 
 <section class="card"><h3>Contrôles SEO</h3><p>Vue synthétique par modules disponible via les sections détaillées ci-dessous.</p></section>
 
 <details class="card"><summary>Détail des pages crawlées</summary><div class="table-wrap"><table><thead><tr><th>Status</th><th>URL</th><th>depth</th><th>title</th><th>meta description</th><th>canonical</th><th>H1 count</th></tr></thead><tbody>{% for p in pages %}<tr><td>{{p.status_code}}</td><td class="url">{{p.final_url}}</td><td>{{p.depth}}</td><td>{{p.title}}</td><td>{{p.meta_description}}</td><td>{{p.canonical}}</td><td>{{p.h1_count}}</td></tr>{% endfor %}</tbody></table></div></details>
-<details class="card"><summary>Détail des issues</summary><div class="table-wrap"><table><thead><tr><th>Priorité</th><th>Problème</th><th>URL</th><th>Discovery</th><th>Où corriger ?</th><th>Action</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.priority}}</td><td>{{i.problem_summary}}</td><td class="url">{{i.target_url}}</td><td>{{i.discovery_type}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
+<details class="card"><summary>Détail des issues</summary><div class="table-wrap"><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Type de découverte</th><th>Texte du lien</th><th>Slug anglais détecté</th><th>Code HTTP de l’URL trouvée</th><th>Canonical de l’URL trouvée</th><th>Est-ce que l’URL trouvée a été crawlée ?</th><th>Est-ce que l’URL trouvée est indexable ?</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class="url">{{i.source_url}}</td><td class="url">{{i.target_url}}</td><td>{{i.found_in}}</td><td>{{i.discovery_type}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td></td><td>{% if i.target_status_code %}Oui{% else %}Non{% endif %}</td><td>{% if i.target_is_200 %}Potentiellement indexable{% else %}Non indexable{% endif %}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
 <details class="card"><summary>Détail des liens</summary><p>{{links|length}} liens trouvés.</p></details>
 <details class="card"><summary>Détail des ressources</summary><p>{{resources|length}} ressources détectées.</p></details>
 {% endblock %}

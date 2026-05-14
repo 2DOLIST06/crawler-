@@ -35,8 +35,13 @@ ISSUE_TYPE_LABELS = {
     "missing_h1": "H1 manquant",
     "multiple_h1": "H1 multiple",
     "missing_canonical": "Canonical absente",
-    "suspicious_slug": "URL anglaise sur .fr",
-    "english_slug_on_fr": "URL anglaise sur .fr",
+    "suspicious_slug": "URL avec slug anglais sur le domaine français",
+    "english_slug_on_fr": "URL avec slug anglais sur le domaine français",
+    "english_slug_url_on_fr": "URL avec slug anglais sur le domaine français",
+    "internal_link_to_english_slug": "Lien interne vers une URL avec slug anglais",
+    "sitemap_english_slug_url": "URL avec slug anglais présente dans le sitemap",
+    "canonical_english_slug_url": "Canonical vers une URL avec slug anglais",
+    "hreflang_english_slug_url": "Hreflang vers une URL avec slug anglais",
     "broken_internal_link": "Lien interne cassé",
 }
 
@@ -61,9 +66,9 @@ def get_issue_recommendation(issue_type: str, discovery_type: str, target_is_200
     'broken_internal_link':('lien interne','Corriger ou supprimer le lien cassé sur la page source.'),
     'internal_redirect':('lien interne','Remplacer le lien par l’URL finale pour éviter une redirection inutile.'),
     }
-    if t in {'suspicious_slug','english_slug_on_fr'}:
+    if t in {'suspicious_slug','english_slug_on_fr','english_slug_url_on_fr','internal_link_to_english_slug','sitemap_english_slug_url','canonical_english_slug_url','hreflang_english_slug_url'}:
         if target_is_200: return ('redirection / routing','Ajouter une redirection 301 vers l’URL française équivalente.')
-        by={'a_href':'Remplacer le lien interne par l’URL française équivalente.','sitemap':'Retirer l’URL anglaise du sitemap ou la remplacer par l’URL française.','canonical':'Corriger la canonical vers l’URL française.','hreflang':'Corriger le hreflang fr-FR vers l’URL française.'}
+        by={'a_href':'Remplacer ce lien par l’URL française équivalente.','sitemap':'Retirer l’URL anglaise du sitemap ou la remplacer par l’URL française.','canonical':'Faire pointer la canonical vers l’URL française propre.','hreflang':'Faire pointer le hreflang fr-FR vers l’URL française.'}
         return ('selon discovery_type', by.get(discovery_type,'Corriger la source de cette URL anglaise.'))
     return map_fixed.get(t, ('template / contenu','Corriger selon la règle SEO de ce type de problème.'))
 def _map_fix_category(issue_type: str, discovery_type: str, likely_origin: str) -> str:
@@ -87,13 +92,13 @@ def _map_fix_category(issue_type: str, discovery_type: str, likely_origin: str) 
 
 def _where_to_fix(discovery_type: str, target_status_code: int | None) -> str:
     if discovery_type == 'a_href':
-        return 'Corriger le lien généré sur la page source. Vérifier le composant, le contenu CMS ou la fonction qui construit cette URL.'
+        return 'Corriger le lien généré sur la page source : composant, contenu CMS ou fonction de génération d’URL.'
     if discovery_type == 'sitemap':
-        return 'Corriger la génération du sitemap pour ne plus inclure cette URL.'
+        return 'Corriger la génération du sitemap.'
     if discovery_type == 'canonical':
-        return 'Corriger la balise canonical générée sur cette page.'
+        return 'Corriger la canonical générée sur cette page.'
     if discovery_type == 'hreflang':
-        return 'Corriger les balises hreflang générées pour cette page.'
+        return 'Corriger les hreflang générés sur cette page.'
     if target_status_code == 200:
         return "Ajouter ou corriger la redirection 301 vers l'URL française équivalente, ou empêcher cette route d'être servie en 200."
     return "Corriger à la source de génération de l'URL problématique (template, CMS, règle SEO ou routage)."
@@ -127,12 +132,19 @@ def _enrich_issue(issue, pages_by_url: dict, links_by_destination: dict):
     likely_origin = 'code'
     fix_category = _map_fix_category(issue.issue_type or '', discovery_type, likely_origin)
     recommended_fix = _recommended_action(fix_category, discovery_type, target_is_200)
+    found_in_map = {
+        'a_href': 'Dans un lien HTML <a href>',
+        'sitemap': 'Dans le sitemap',
+        'canonical': 'Dans la balise canonical',
+        'hreflang': 'Dans une balise hreflang',
+    }
     return {
         'raw': issue,
         'problem_summary': ISSUE_TYPE_LABELS.get(issue.issue_type, issue.issue_type),
         'source_url': source_url,
         'target_url': issue.url,
         'discovery_type': discovery_type,
+        'found_in': found_in_map.get(discovery_type, 'Dans un lien HTML <a href>'),
         'evidence': detail,
         'priority': issue.severity,
         'where_to_fix': where_to_fix,
@@ -286,9 +298,10 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
     if not priority_rows:
         priority_rows = [i for i in all_enriched if (i.get('priority') or '').lower() == 'medium'][:20]
 
-    english_rows = [i for i in all_enriched if (i['raw'].issue_type or '').lower() in {'suspicious_slug','english_slug_on_fr'}]
+    english_rows = [i for i in all_enriched if (i['raw'].issue_type or '').lower() in {'suspicious_slug','english_slug_on_fr','english_slug_url_on_fr','internal_link_to_english_slug','sitemap_english_slug_url','canonical_english_slug_url','hreflang_english_slug_url'}]
     english_counts = {
         'total': len(english_rows),
+        'url_on_fr': sum(1 for i in english_rows if (i['raw'].issue_type or '').lower() in {'suspicious_slug','english_slug_on_fr','english_slug_url_on_fr'}),
         'a_href': sum(1 for i in english_rows if i['discovery_type']=='a_href'),
         'sitemap': sum(1 for i in english_rows if i['discovery_type']=='sitemap'),
         'canonical': sum(1 for i in english_rows if i['discovery_type']=='canonical'),
