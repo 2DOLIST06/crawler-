@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Mission Slugs anglais sur .fr{% endblock %}
+{% block content %}
+<h2>Mission : Slugs anglais sur .fr</h2>
+<section class="card"><p>Mission ciblée pour détecter uniquement les URLs avec slugs anglais sur www.2dolist.fr.</p><p>Slugs détectés : airplane, helicopter, glider, paragliding, skydiving, hot-air-balloon, flight-simulator, airplane-flying-lesson.</p></section>
+<section class="card"><h3>Endroits analysés</h3><ul><li>Liens HTML &lt;a href&gt;</li><li>Sitemap (index + sitemaps enfants)</li><li>Canonical</li><li>Hreflang</li><li>Prev / next</li></ul></section>
+<section class="card"><h3>Endroits ignorés</h3><ul><li>__NEXT_DATA__, scripts JS, JSON brut</li><li>Texte non cliquable</li><li>Images/src/srcset</li><li>CSS/JS externes</li></ul></section>
+<section class="card"><h3>Exports</h3><ul><li>english_slugs_fr_audit.csv</li><li>english_slugs_fr_audit.json</li></ul></section>
+<section class="card"><h3>Comment lire le rapport</h3><p>Chaque ligne explique la source exacte, l'URL anglaise trouvée, le slug détecté, le code HTTP final, où corriger et l'action recommandée.</p></section>
+{% endblock %}

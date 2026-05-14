@@ -267,7 +267,11 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
 
     pages = pages_q.all()
     issues = issues_q.all()
+    mission_type = run.mission_type or (run.config_snapshot or {}).get('mission_type', 'simple_crawl')
     enriched_issues = [_enrich_issue(i, pages_by_url, links_by_destination) for i in issues]
+    if mission_type == 'english_slugs_fr_audit':
+        allowed = {'internal_link_to_english_slug','sitemap_english_slug_url','canonical_english_slug_url','hreflang_english_slug_url','prev_next_english_slug_url','english_slug_url_on_fr'}
+        enriched_issues = [i for i in enriched_issues if i['raw'].issue_type in allowed]
     all_pages = db.query(CrawledPage).filter_by(run_id=run_id).all()
     all_issues = db.query(Issue).filter_by(run_id=run_id).all()
 
@@ -306,6 +310,7 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
         'sitemap': sum(1 for i in english_rows if i['discovery_type']=='sitemap'),
         'canonical': sum(1 for i in english_rows if i['discovery_type']=='canonical'),
         'hreflang': sum(1 for i in english_rows if i['discovery_type']=='hreflang'),
+        'prev_next': sum(1 for i in english_rows if i['discovery_type'] in {'prev','next','prev_next'}),
         'is_200': sum(1 for i in english_rows if i['target_is_200']),
     }
-    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues), 'priority_rows': priority_rows, 'english_counts': english_counts, 'all_enriched': all_enriched})
+    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'mission_type': mission_type, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues), 'priority_rows': priority_rows, 'english_counts': english_counts, 'all_enriched': all_enriched})

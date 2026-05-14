@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Run {{run.id}}{% endblock %}
+{% block title %}Run {{run.id}}
+{% endblock %}
 {% block content %}
 <h2>Rapport du run #{{run.id}}</h2>
 <section class="card">
@@ -27,6 +28,18 @@
 {% if run.status == 'failed' %}<p class="warn"><strong>Erreur :</strong> {{run.error_message or 'N/A'}}</p>{% endif %}
 </section>
 
+
+{% if mission_type == 'english_slugs_fr_audit' %}
+<section class='card'><h3>Slugs anglais sur le domaine français</h3>
+<p>Occurrences totales: {{english_counts.total}} | Liens HTML: {{english_counts.a_href}} | Sitemap: {{english_counts.sitemap}} | Canonical: {{english_counts.canonical}} | Hreflang: {{english_counts.hreflang}} | Prev/Next: {{english_counts.prev_next}} | URLs en 200: {{english_counts.is_200}}</p>
+{% if english_counts.total == 0 %}<p class='ok'>Aucun slug anglais détecté dans les liens HTML, sitemap, canonical, hreflang, prev ou next de ce run.</p>{% endif %}
+<p>Couverture: pages crawlées {{run.pages_crawled}} / max pages {{run.max_pages}}, max depth {{run.max_depth}}, max pages atteint {% if run.pages_crawled == run.max_pages %}oui{% else %}non{% endif %}.</p>
+{% if run.pages_crawled == run.max_pages %}<p class='warn'>Audit partiel : la limite max_pages a été atteinte. Certaines URLs découvertes n’ont peut-être pas été analysées.</p>{% endif %}
+</section>
+<section class='card'><h3>Détails des occurrences</h3><div class='table-wrap'><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Texte du lien</th><th>Slug détecté</th><th>Code HTTP</th><th>URL finale</th><th>Canonical</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>
+{% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class='url'>{{i.source_url}}</td><td class='url'>{{i.target_url}}</td><td>{{i.found_in}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td class='url'>{{i.target_url}}</td><td></td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% else %}
 <section class="card"><h3>Ce qu’il faut corriger en priorité</h3>
 {% if priority_rows|length == 0 %}<p>Aucun problème critique ou important détecté sur ce crawl.</p>{% else %}
 <div class="table-wrap"><table><thead><tr><th>Priorité</th><th>Sujet</th><th>Problème</th><th>URL concernée</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>
@@ -47,6 +60,7 @@
 <details class="card"><summary>Détail des issues</summary><div class="table-wrap"><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Type de découverte</th><th>Texte du lien</th><th>Slug anglais détecté</th><th>Code HTTP de l’URL trouvée</th><th>Canonical de l’URL trouvée</th><th>Est-ce que l’URL trouvée a été crawlée ?</th><th>Est-ce que l’URL trouvée est indexable ?</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class="url">{{i.source_url}}</td><td class="url">{{i.target_url}}</td><td>{{i.found_in}}</td><td>{{i.discovery_type}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td></td><td>{% if i.target_status_code %}Oui{% else %}Non{% endif %}</td><td>{% if i.target_is_200 %}Potentiellement indexable{% else %}Non indexable{% endif %}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
 <details class="card"><summary>Détail des liens</summary><p>{{links|length}} liens trouvés.</p></details>
 <details class="card"><summary>Détail des ressources</summary><p>{{resources|length}} ressources détectées.</p></details>
+{% endif %}
 {% endblock %}
 
 {% if run.status in ['pending', 'running'] %}

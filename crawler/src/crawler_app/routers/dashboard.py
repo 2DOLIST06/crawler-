@@ -63,3 +63,10 @@ def exports_page(request: Request):
     if not is_auth(request):
         return RedirectResponse('/login', 302)
     return templates.TemplateResponse('exports.html', {'request': request})
+
+
+@router.get('/missions/english-slugs-fr-audit')
+def mission_english_slugs_fr_audit(request: Request):
+    if not is_auth(request):
+        return RedirectResponse('/login', 302)
+    return templates.TemplateResponse('mission_english_slugs_fr_audit.html', {'request': request})
