@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}Projets{% endblock %}
 {% block content %}
-<section class="card"><h2>Nouveau projet</h2><form method='post' class="form-grid"><label>Nom<input name='name' required></label><label>URL de départ<input name='start_url' required></label><label>Domaine autorisé<input name='allowed_domain' required></label><label><input type='checkbox' name='same_host_only'> Même host uniquement</label><button class="btn">Créer</button></form></section>
-<section class="card"><h2>Liste des projets</h2><table><thead><tr><th>Nom</th><th>Action</th></tr></thead><tbody>{% for p in projects %}<tr><td>{{p.name}}</td><td><a class="btn-link" href='/projects/{{p.id}}'>Ouvrir</a></td></tr>{% endfor %}</tbody></table></section>
+<h2>Projets</h2>
+<section class="card"><h3>Créer un projet</h3><form method='post' class="form-grid">
+<label>Nom du projet<input name='name' required placeholder='2dolist FR'></label>
+<label>URL de départ<input name='start_url' required placeholder='https://www.2dolist.fr/'></label>
+<label>Domaine autorisé<input name='allowed_domain' required placeholder='www.2dolist.fr'></label>
+<label class="checkbox-line"><input type='checkbox' name='same_host_only' checked> Même hôte uniquement <small>Si coché, le crawler reste uniquement sur ce sous-domaine.</small></label>
+<label>Max pages par défaut<input type='number' name='default_max_pages' value='500' placeholder='500'></label>
+<label>Profondeur par défaut<input type='number' name='default_max_depth' value='5' placeholder='5'></label>
+<label>Mode par défaut<select name='default_mode'><option value='http'>http rapide</option><option value='browser'>browser rendu navigateur</option></select></label>
+<button class="btn">Créer le projet</button></form></section>
+<section class="card"><h3>Liste des projets</h3><table><thead><tr><th>Nom</th><th>URL de départ</th><th>Domaine autorisé</th><th>Mode par défaut</th><th>Max pages</th><th>Profondeur</th><th>Date de création</th><th>Actions</th></tr></thead><tbody>{% for p in projects %}<tr><td>{{p.name}}</td><td class="url">{{p.start_url}}</td><td>{{p.allowed_domain}}</td><td>{{p.default_mode}}</td><td>{{p.default_max_pages}}</td><td>{{p.default_max_depth}}</td><td>{{p.created_at}}</td><td><a class="btn-link" href='/projects/{{p.id}}'>Ouvrir</a> <a class="btn-link" href='/projects/{{p.id}}'>Lancer un crawl</a></td></tr>{% endfor %}</tbody></table></section>
 {% endblock %}

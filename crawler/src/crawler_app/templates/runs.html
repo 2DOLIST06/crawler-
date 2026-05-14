@@ -1,1 +1,6 @@
-{% extends 'base.html' %}{% block content %}<h1>runs</h1>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Runs{% endblock %}
+{% block content %}
+<h2>Runs</h2>
+<section class="card"><table><thead><tr><th>ID</th><th>Projet</th><th>Mission</th><th>Statut</th><th>Pages</th><th>Issues</th><th>Démarré le</th><th>Action</th></tr></thead><tbody>{% for r in runs %}<tr><td>{{r.id}}</td><td>{{r.project_id}}</td><td>{{r.config_snapshot.get('mission','simple')}}</td><td>{{r.status}}</td><td>{{r.pages_crawled}}</td><td>{{r.issues_found}}</td><td>{{r.started_at}}</td><td><a class="btn-link" href="/runs/{{r.id}}">Voir le rapport</a></td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}
