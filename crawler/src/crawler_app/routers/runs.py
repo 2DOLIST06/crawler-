@@ -12,6 +12,140 @@ from crawler_app.services.stats_service import run_chart_stats
 templates = Jinja2Templates(directory='src/crawler_app/templates')
 router = APIRouter(prefix='/runs')
 
+from urllib.parse import urlparse
+
+
+def _is_english_url_on_fr(url: str | None) -> bool:
+    if not url:
+        return False
+    parsed = urlparse(url)
+    host = (parsed.netloc or '').lower()
+    path = (parsed.path or '').lower()
+    return host.endswith('.fr') and '/en' in f"{path}/"
+
+
+def _map_fix_category(issue_type: str, discovery_type: str, likely_origin: str) -> str:
+    t = (issue_type or '').lower()
+    if discovery_type == 'sitemap' or 'sitemap' in t:
+        return 'sitemap'
+    if discovery_type == 'canonical' or 'canonical' in t:
+        return 'canonical'
+    if discovery_type == 'hreflang' or 'hreflang' in t:
+        return 'hreflang'
+    if discovery_type in {'a_href', 'prev_next'}:
+        return 'maillage interne'
+    if 'robots' in t or 'index' in t:
+        return 'robots'
+    if 'redirect' in t or 'redirection' in t:
+        return 'redirection'
+    if likely_origin in {'code', 'contenu'}:
+        return likely_origin
+    return 'code'
+
+
+def _where_to_fix(discovery_type: str, target_status_code: int | None) -> str:
+    if discovery_type == 'a_href':
+        return 'Corriger le lien généré sur la page source. Vérifier le composant, le contenu CMS ou la fonction qui construit cette URL.'
+    if discovery_type == 'sitemap':
+        return 'Corriger la génération du sitemap pour ne plus inclure cette URL.'
+    if discovery_type == 'canonical':
+        return 'Corriger la balise canonical générée sur cette page.'
+    if discovery_type == 'hreflang':
+        return 'Corriger les balises hreflang générées pour cette page.'
+    if target_status_code == 200:
+        return 'Ajouter ou corriger la redirection 301 vers l'URL française équivalente, ou empêcher cette route d'être servie en 200.'
+    return 'Corriger à la source de génération de l'URL problématique (template, CMS, règle SEO ou routage).'
+
+
+def _recommended_action(fix_category: str, discovery_type: str, is_english_200: bool) -> str:
+    if is_english_200:
+        return 'Ajouter une redirection 301 de l'URL anglaise vers l'URL française.'
+    if discovery_type == 'sitemap':
+        return 'Retirer cette URL du sitemap.'
+    if discovery_type == 'canonical':
+        return 'Corriger la canonical pour pointer vers l'URL française propre.'
+    if discovery_type == 'hreflang':
+        return 'Corriger hreflang fr-FR pour pointer vers la page française.'
+    if discovery_type == 'a_href':
+        return 'Remplacer le lien interne par l'URL française.'
+    if fix_category == 'robots':
+        return 'Ajouter noindex ou canonical vers l'URL propre pour cette URL à paramètre.'
+    return 'Corriger ou supprimer le lien cassé.'
+
+
+def _enrich_issue(issue, pages_by_url: dict, links_by_destination: dict):
+    detail = issue.details or ''
+    detail_l = detail.lower()
+    discovery_type = 'a_href'
+    if 'sitemap' in detail_l or 'sitemap' in (issue.issue_type or '').lower():
+        discovery_type = 'sitemap'
+    elif 'canonical' in detail_l or 'canonical' in (issue.issue_type or '').lower():
+        discovery_type = 'canonical'
+    elif 'hreflang' in detail_l or 'hreflang' in (issue.issue_type or '').lower():
+        discovery_type = 'hreflang'
+    elif 'prev' in detail_l or 'next' in detail_l:
+        discovery_type = 'prev_next'
+
+    link = links_by_destination.get(issue.url)
+    source_url = issue.source_url or (link.source_url if link else None)
+    anchor_text = link.anchor_text if link else None
+
+    target_page = pages_by_url.get(issue.url)
+    target_status_code = target_page.status_code if target_page else None
+    target_canonical = target_page.canonical if target_page else None
+    redirects = bool(target_page and target_page.redirect_chain)
+    is_200 = target_status_code == 200
+    is_en = _is_english_url_on_fr(issue.url)
+
+    likely_origin = 'code'
+    if discovery_type == 'sitemap': likely_origin = 'sitemap'
+    elif discovery_type == 'canonical': likely_origin = 'canonical'
+    elif discovery_type == 'hreflang': likely_origin = 'hreflang'
+    elif discovery_type == 'a_href': likely_origin = 'code ou contenu'
+    elif is_en and is_200: likely_origin = 'redirection / routing'
+
+    fix_category = _map_fix_category(issue.issue_type or '', discovery_type, likely_origin)
+    action = _recommended_action(fix_category, discovery_type, is_en and is_200)
+
+    return {
+        'raw': issue,
+        'problem_summary': f"{issue.issue_type} détectée",
+        'why_it_matters': 'Peut créer des signaux SEO incohérents, diluer l'autorité et ralentir la correction.',
+        'source_url': source_url,
+        'target_url': issue.url,
+        'discovery_type': discovery_type,
+        'evidence': detail,
+        'anchor_text': anchor_text,
+        'target_status_code': target_status_code,
+        'target_is_200': is_200,
+        'target_redirects': redirects,
+        'target_canonical': target_canonical,
+        'likely_origin': likely_origin,
+        'recommended_fix': action,
+        'priority': issue.severity,
+        'fix_category': fix_category,
+        'where_to_fix': _where_to_fix(discovery_type, target_status_code),
+        'action_recommandee': action,
+    }
+
+
+def _build_action_plan(enriched_issues: list[dict]):
+    groups = [
+        ('code', 'Corrections code / templates'),
+        ('contenu', 'Corrections contenus'),
+        ('sitemap', 'Corrections sitemap'),
+        ('redirection', 'Corrections redirections'),
+        ('canonical', 'Corrections canonical'),
+        ('hreflang', 'Corrections hreflang'),
+        ('maillage interne', 'Corrections maillage interne'),
+        ('robots', 'Corrections robots/indexabilité'),
+    ]
+    out=[]
+    for key,label in groups:
+        selected=[i for i in enriched_issues if i['fix_category']==key]
+        out.append({'key':key,'label':label,'count':len(selected),'urls':sorted({i['target_url'] for i in selected if i['target_url']}), 'action': selected[0]['action_recommandee'] if selected else 'Aucune action.'})
+    return out
+
 
 @router.get('')
 def list_runs(request: Request, db: Session = Depends(get_db)):
@@ -42,6 +176,8 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
     issues_q = db.query(Issue).filter_by(run_id=run_id)
     links = db.query(Link).filter_by(run_id=run_id).all()
     resources = db.query(Resource).filter_by(run_id=run_id).all()
+    pages_by_url = {p.final_url: p for p in db.query(CrawledPage).filter_by(run_id=run_id).all()}
+    links_by_destination = {l.destination_url: l for l in links}
 
     if status_code:
         if status_code == 'unknown':
@@ -66,6 +202,7 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
 
     pages = pages_q.all()
     issues = issues_q.all()
+    enriched_issues = [_enrich_issue(i, pages_by_url, links_by_destination) for i in issues]
     all_pages = db.query(CrawledPage).filter_by(run_id=run_id).all()
     all_issues = db.query(Issue).filter_by(run_id=run_id).all()
 
@@ -91,4 +228,4 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
         if s in sev_counts:
             sev_counts[s] += 1
 
-    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}})
+    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues)})
