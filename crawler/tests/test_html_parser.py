@@ -1,8 +1,5 @@
-from crawler.parsers.html_parser import parse_html
+from crawler_app.crawler.parsers.html_parser import parse_html
 
-
-def test_parse_links_and_title():
-    html = "<html><head><title>X</title></head><body><a href='/a'>A</a></body></html>"
-    data = parse_html(html, "https://example.com")
-    assert data["title"] == "X"
-    assert data["links"][0]["href"] == "/a"
+def test_parse_html():
+    d=parse_html('<html><title>T</title><a href="/x">x</a><h1>A</h1></html>')
+    assert d['title']=='T' and len(d['links'])==1

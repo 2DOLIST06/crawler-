@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: crawler-web
+    env: docker
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crawler-db
+          property: connectionString
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DEFAULT_USER_AGENT
+        value: crawler-app/1.0
+      - key: ENVIRONMENT
+        value: production
+databases:
+  - name: crawler-db
+    plan: starter
