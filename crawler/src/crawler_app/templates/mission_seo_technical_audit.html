@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Mission SEO Technical Audit{% endblock %}
+{% block content %}
+<h2>Mission : SEO Technical Audit</h2>
+<section class="card">
+  <h3>A. Ce que la mission crawle</h3>
+  <ul>
+    <li>Page d'accueil.</li>
+    <li>URLs internes trouvées dans les liens &lt;a href=""&gt;.</li>
+    <li>URLs du sitemap.</li>
+    <li>Canonical.</li>
+    <li>Hreflang.</li>
+    <li>Prev / next.</li>
+    <li>URLs internes uniquement.</li>
+    <li>Pas de formulaires.</li>
+    <li>Pas de clics JS.</li>
+    <li>Pas d'actions de réservation.</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>B. Ce que la mission ignore</h3>
+  <ul>
+    <li>Domaines externes.</li>
+    <li>Images CloudFront comme pages à crawler.</li>
+    <li>Fichiers JS/CSS/images comme pages.</li>
+    <li>mailto:</li>
+    <li>tel:</li>
+    <li>javascript:</li>
+    <li>data:</li>
+    <li>Fragments #...</li>
+    <li>Paramètres de tracking.</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>C. Contrôles réalisés</h3>
+  <table>
+    <thead><tr><th>Module</th><th>Contrôles</th><th>Exemples d'issues</th><th>Priorité possible</th></tr></thead>
+    <tbody>
+      <tr><td>Slugs anglais sur .fr</td><td>Détection de patterns EN dans les chemins URL d'un domaine .fr.</td><td>/about-us, /contact-us, /booking sur .fr</td><td>Medium à High</td></tr>
+      <tr><td>Sitemap</td><td>Présence sitemap, cohérence URLs sitemap vs crawl, statuts des URLs listées.</td><td>URL sitemap en 404, URL absente du crawl</td><td>High</td></tr>
+      <tr><td>Canonical</td><td>Canonical manquante, auto-référence, cible non 200, divergence avec URL finale.</td><td>Canonical vers 3xx/4xx, canonical cross-domain non voulue</td><td>High</td></tr>
+      <tr><td>Hreflang</td><td>Validité des codes langue/pays, réciprocité, cohérence canonicals/hreflang.</td><td>hreflang sans retour, code langue invalide</td><td>High</td></tr>
+      <tr><td>Statuts HTTP</td><td>Analyse 2xx/3xx/4xx/5xx, chaînes de redirection, pages cassées.</td><td>Liens internes vers 404, redirections multiples</td><td>Critical à High</td></tr>
+      <tr><td>Indexabilité</td><td>Meta robots, x-robots-tag, noindex contradictoire avec sitemap/canonical.</td><td>Page stratégique noindex, canonical indexable incohérente</td><td>High</td></tr>
+      <tr><td>Metadata</td><td>Titres/descriptions manquants, trop courts/longs, doublons.</td><td>Title vide, meta description dupliquée</td><td>Medium</td></tr>
+      <tr><td>Liens internes</td><td>Qualité du maillage, liens orphelins candidats, ancres non descriptives.</td><td>Page profonde avec 0 lien entrant</td><td>Medium à High</td></tr>
+      <tr><td>Pagination</td><td>Rel prev/next, cohérence séquences paginées, canonicals en pagination.</td><td>next sans prev, page 2 canonical vers page 1</td><td>Medium</td></tr>
+      <tr><td>Pages pauvres</td><td>Détection de contenu mince via signaux techniques crawlables.</td><td>Page avec faible contenu textuel exploitable</td><td>Medium</td></tr>
+      <tr><td>Données structurées</td><td>Présence/validité basique des blocs schema.org crawlés.</td><td>JSON-LD invalide, type schema inadapté</td><td>Low à Medium</td></tr>
+      <tr><td>Images</td><td>Vérification alt manquants et ressources image cassées détectables.</td><td>Image clé sans alt, image 404</td><td>Low à Medium</td></tr>
+      <tr><td>Performance crawlable</td><td>Temps de réponse, poids et accessibilité technique côté crawl.</td><td>TTFB élevé, pages lourdes récurrentes</td><td>Medium</td></tr>
+      <tr><td>Robots.txt</td><td>Accès robots, directives bloquantes, cohérence avec stratégie indexable.</td><td>Disallow bloquant des sections utiles SEO</td><td>High</td></tr>
+    </tbody>
+  </table>
+</section>
+<section class="card">
+  <h3>D. Exports générés</h3>
+  <ul>
+    <li>crawl_all_urls.csv</li><li>issues.csv</li><li>english_slugs_on_fr.csv</li><li>internal_links.csv</li><li>canonicals.csv</li><li>hreflang.csv</li><li>sitemap_audit.csv</li><li>pagination.csv</li><li>metadata_duplicates.csv</li><li>orphan_candidates.csv</li><li>broken_links.csv</li><li>redirects.csv</li><li>structured_data.csv</li><li>page_quality.csv</li><li>seo_audit_summary.md</li><li>full_run.json</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>E. Comment lire le rapport</h3>
+  <ul>
+    <li>Le résumé donne l'état global du site et les signaux majeurs du run.</li>
+    <li>Les corrections prioritaires indiquent quoi corriger en premier pour maximiser l'impact SEO.</li>
+    <li>La section URLs anglaises indique où les slugs anglais sont trouvés.</li>
+    <li>La colonne « Où corriger ? » indique si le problème vient du code, du contenu, du sitemap, des redirections, canonical ou hreflang.</li>
+    <li>Les exports servent à travailler les corrections hors interface (tri, assignation, suivi).</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>F. Réglages conseillés</h3>
+  <p><strong>Premier test :</strong></p>
+  <ul><li>Max pages : 100</li><li>Profondeur : 3</li><li>Mode : HTTP</li><li>Respect robots.txt : non</li></ul>
+  <p><strong>Audit plus large :</strong></p>
+  <ul><li>Max pages : 1000</li><li>Profondeur : 5</li><li>Mode : HTTP</li><li>Respect robots.txt : non</li></ul>
+  <p><strong>Audit rendu JS :</strong></p>
+  <ul><li>Mode : browser</li><li>Max pages plus faible</li><li>À utiliser si des liens ne sont visibles qu'après rendu JavaScript</li></ul>
+</section>
+{% endblock %}

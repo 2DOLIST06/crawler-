@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Mission Crawl simple{% endblock %}
+{% block content %}
+<h2>Mission : Crawl simple</h2>
+<section class="card">
+  <h3>Ce que la mission crawle</h3>
+  <ul>
+    <li>La page d'entrée et les URLs internes découvertes via les liens HTML standards.</li>
+    <li>Les pages accessibles en mode HTTP ou browser selon la configuration du run.</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Ce qu'elle extrait</h3>
+  <ul>
+    <li>Statut HTTP, URL finale, profondeur, canonical.</li>
+    <li>Titre, meta description, nombre de H1.</li>
+    <li>Volumes de liens internes et externes, ressources détectées.</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Ce qu'elle ignore</h3>
+  <ul>
+    <li>Les actions utilisateur (formulaires, clics applicatifs, tunnels de réservation).</li>
+    <li>Les scénarios JavaScript complexes non accessibles sans interaction.</li>
+    <li>L'audit SEO avancé multi-modules (sitemap/hreflang/pagination détaillée).</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Exports générés</h3>
+  <ul>
+    <li>pages.csv / pages.json</li>
+    <li>links.csv / links.json</li>
+    <li>resources.csv / resources.json</li>
+    <li>full.json</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Réglages conseillés</h3>
+  <ul>
+    <li>Premier passage : 100 pages, profondeur 3, mode HTTP.</li>
+    <li>Site plus large : 300 à 1000 pages, profondeur 4 à 5.</li>
+    <li>Activer le mode browser si une partie du maillage n'apparaît qu'après rendu JavaScript.</li>
+  </ul>
+</section>
+{% endblock %}
