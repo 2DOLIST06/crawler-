@@ -124,6 +124,9 @@ def _enrich_issue(issue, pages_by_url: dict, links_by_destination: dict):
     target_status_code = target_page.status_code if target_page else None
     target_is_200 = target_status_code == 200
     where_to_fix, action = get_issue_recommendation(issue.issue_type or '', discovery_type, target_is_200)
+    likely_origin = 'code'
+    fix_category = _map_fix_category(issue.issue_type or '', discovery_type, likely_origin)
+    recommended_fix = _recommended_action(fix_category, discovery_type, target_is_200)
     return {
         'raw': issue,
         'problem_summary': ISSUE_TYPE_LABELS.get(issue.issue_type, issue.issue_type),
@@ -134,6 +137,8 @@ def _enrich_issue(issue, pages_by_url: dict, links_by_destination: dict):
         'priority': issue.severity,
         'where_to_fix': where_to_fix,
         'action_recommandee': action,
+        'recommended_fix': recommended_fix,
+        'fix_category': fix_category,
         'target_status_code': target_status_code,
         'target_is_200': target_is_200,
     }
@@ -152,8 +157,17 @@ def _build_action_plan(enriched_issues: list[dict]):
     ]
     out=[]
     for key,label in groups:
-        selected=[i for i in enriched_issues if i['fix_category']==key]
-        out.append({'key':key,'label':label,'count':len(selected),'urls':sorted({i['target_url'] for i in selected if i['target_url']}), 'action': selected[0]['action_recommandee'] if selected else 'Aucune action.'})
+        selected=[i for i in enriched_issues if i.get('fix_category')==key]
+        urls = sorted({i.get('target_url') for i in selected if i.get('target_url')})
+        default_action = 'Aucune action.'
+        if selected:
+            first = selected[0]
+            default_action = (
+                first.get('action_recommandee')
+                or first.get('recommended_fix')
+                or 'Aucune action.'
+            )
+        out.append({'key':key,'label':label,'count':len(selected),'urls':urls, 'action': default_action})
     return out
 
 
