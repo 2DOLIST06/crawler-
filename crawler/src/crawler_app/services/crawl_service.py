@@ -46,8 +46,8 @@ def _is_indexable(page: CrawledPage) -> str:
 
 
 async def execute_run(db, run: Run, project):
-    mission = (run.config_snapshot or {}).get("mission", "simple")
-    is_seo_audit = mission == "seo_technical_audit"
+    mission_type = run.mission_type or (run.config_snapshot or {}).get("mission_type", "simple_crawl")
+    is_seo_audit = mission_type == "seo_technical_audit"
 
     run.status = "running"
     run.started_at = datetime.utcnow()
