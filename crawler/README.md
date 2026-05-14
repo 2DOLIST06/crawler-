@@ -31,9 +31,10 @@ Vous pouvez créer un fichier `.env` à la racine du repo :
 DATABASE_URL=sqlite:///./crawler.db
 EXPORTS_DIR=exports
 APP_SECRET_KEY=change-me
+ENVIRONMENT=development
+# Optionnel en local: défaut admin/admin en mode development
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
-ENVIRONMENT=development
 ```
 
 ### Démarrage de l'application
@@ -108,3 +109,6 @@ Créer une classe dans `src/crawler_app/crawler/analyzers/` héritée de `BaseAn
 - `analyze_link`
 - `analyze_resource`
 puis l’enregistrer dans le service de crawl.
+
+
+En mode `production`, définissez explicitement `ADMIN_USERNAME` et `ADMIN_PASSWORD` (pas de fallback implicite).
