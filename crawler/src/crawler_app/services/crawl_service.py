@@ -84,7 +84,7 @@ async def execute_run(db, run: Run, project):
             db.flush()
             run.pages_crawled += 1
 
-            for it, sev in analyzers[0].analyze_page({**parsed, "status_code": fr["status_code"], "final_url": fr["final_url"]}):
+            for it, sev in analyzers[0].analyze_page({**parsed, "status_code": fr["status_code"], "final_url": fr["final_url"], "content_type": fr.get("content_type")}):
                 db.add(Issue(run_id=run.id, issue_type=it, severity=sev, url=fr["final_url"]))
 
             internal_count = 0

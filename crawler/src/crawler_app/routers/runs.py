@@ -24,6 +24,48 @@ def _is_english_url_on_fr(url: str | None) -> bool:
     return host.endswith('.fr') and '/en' in f"{path}/"
 
 
+
+ISSUE_TYPE_LABELS = {
+    "missing_title": "Title manquant",
+    "title_too_short": "Title trop court",
+    "title_too_long": "Title trop long",
+    "missing_meta_description": "Meta description manquante",
+    "meta_description_too_short": "Meta description trop courte",
+    "meta_description_too_long": "Meta description trop longue",
+    "missing_h1": "H1 manquant",
+    "multiple_h1": "H1 multiple",
+    "missing_canonical": "Canonical absente",
+    "suspicious_slug": "URL anglaise sur .fr",
+    "english_slug_on_fr": "URL anglaise sur .fr",
+    "broken_internal_link": "Lien interne cassé",
+}
+
+def _detect_discovery_type(issue_type: str, details: str) -> str:
+    d=(details or '').lower(); t=(issue_type or '').lower()
+    if 'sitemap' in d or 'sitemap' in t: return 'sitemap'
+    if 'canonical' in d or 'canonical' in t: return 'canonical'
+    if 'hreflang' in d or 'hreflang' in t: return 'hreflang'
+    if 'prev' in d or 'next' in d: return 'prev_next'
+    return 'a_href'
+
+def get_issue_recommendation(issue_type: str, discovery_type: str, target_is_200: bool=False):
+    t=(issue_type or '').lower()
+    map_fixed={
+    'missing_title':('contenu / template SEO','Ajouter une balise title unique et descriptive sur cette page.'),
+    'title_too_short':('contenu / template SEO','Réécrire le title pour qu’il décrive clairement la page.'),
+    'title_too_long':('contenu / template SEO','Raccourcir le title en gardant les mots importants au début.'),
+    'missing_meta_description':('contenu / template SEO','Ajouter une meta description unique et utile pour cette page.'),
+    'missing_h1':('template ou contenu de page','Ajouter un H1 unique visible sur cette page.'),
+    'multiple_h1':('template ou contenu de page','Conserver un seul H1 principal et transformer les autres titres en H2.'),
+    'missing_canonical':('template SEO','Ajouter une canonical absolue vers l’URL propre de la page.'),
+    'broken_internal_link':('lien interne','Corriger ou supprimer le lien cassé sur la page source.'),
+    'internal_redirect':('lien interne','Remplacer le lien par l’URL finale pour éviter une redirection inutile.'),
+    }
+    if t in {'suspicious_slug','english_slug_on_fr'}:
+        if target_is_200: return ('redirection / routing','Ajouter une redirection 301 vers l’URL française équivalente.')
+        by={'a_href':'Remplacer le lien interne par l’URL française équivalente.','sitemap':'Retirer l’URL anglaise du sitemap ou la remplacer par l’URL française.','canonical':'Corriger la canonical vers l’URL française.','hreflang':'Corriger le hreflang fr-FR vers l’URL française.'}
+        return ('selon discovery_type', by.get(discovery_type,'Corriger la source de cette URL anglaise.'))
+    return map_fixed.get(t, ('template / contenu','Corriger selon la règle SEO de ce type de problème.'))
 def _map_fix_category(issue_type: str, discovery_type: str, likely_origin: str) -> str:
     t = (issue_type or '').lower()
     if discovery_type == 'sitemap' or 'sitemap' in t:
@@ -75,57 +117,25 @@ def _recommended_action(fix_category: str, discovery_type: str, is_english_200: 
 
 def _enrich_issue(issue, pages_by_url: dict, links_by_destination: dict):
     detail = issue.details or ''
-    detail_l = detail.lower()
-    discovery_type = 'a_href'
-    if 'sitemap' in detail_l or 'sitemap' in (issue.issue_type or '').lower():
-        discovery_type = 'sitemap'
-    elif 'canonical' in detail_l or 'canonical' in (issue.issue_type or '').lower():
-        discovery_type = 'canonical'
-    elif 'hreflang' in detail_l or 'hreflang' in (issue.issue_type or '').lower():
-        discovery_type = 'hreflang'
-    elif 'prev' in detail_l or 'next' in detail_l:
-        discovery_type = 'prev_next'
-
+    discovery_type = _detect_discovery_type(issue.issue_type or '', detail)
     link = links_by_destination.get(issue.url)
     source_url = issue.source_url or (link.source_url if link else None)
-    anchor_text = link.anchor_text if link else None
-
     target_page = pages_by_url.get(issue.url)
     target_status_code = target_page.status_code if target_page else None
-    target_canonical = target_page.canonical if target_page else None
-    redirects = bool(target_page and target_page.redirect_chain)
-    is_200 = target_status_code == 200
-    is_en = _is_english_url_on_fr(issue.url)
-
-    likely_origin = 'code'
-    if discovery_type == 'sitemap': likely_origin = 'sitemap'
-    elif discovery_type == 'canonical': likely_origin = 'canonical'
-    elif discovery_type == 'hreflang': likely_origin = 'hreflang'
-    elif discovery_type == 'a_href': likely_origin = 'code ou contenu'
-    elif is_en and is_200: likely_origin = 'redirection / routing'
-
-    fix_category = _map_fix_category(issue.issue_type or '', discovery_type, likely_origin)
-    action = _recommended_action(fix_category, discovery_type, is_en and is_200)
-
+    target_is_200 = target_status_code == 200
+    where_to_fix, action = get_issue_recommendation(issue.issue_type or '', discovery_type, target_is_200)
     return {
         'raw': issue,
-        'problem_summary': f"{issue.issue_type} détectée",
-        'why_it_matters': 'Peut créer des signaux SEO incohérents, diluer l'autorité et ralentir la correction.',
+        'problem_summary': ISSUE_TYPE_LABELS.get(issue.issue_type, issue.issue_type),
         'source_url': source_url,
         'target_url': issue.url,
         'discovery_type': discovery_type,
         'evidence': detail,
-        'anchor_text': anchor_text,
-        'target_status_code': target_status_code,
-        'target_is_200': is_200,
-        'target_redirects': redirects,
-        'target_canonical': target_canonical,
-        'likely_origin': likely_origin,
-        'recommended_fix': action,
         'priority': issue.severity,
-        'fix_category': fix_category,
-        'where_to_fix': _where_to_fix(discovery_type, target_status_code),
+        'where_to_fix': where_to_fix,
         'action_recommandee': action,
+        'target_status_code': target_status_code,
+        'target_is_200': target_is_200,
     }
 
 
@@ -228,4 +238,18 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
         if s in sev_counts:
             sev_counts[s] += 1
 
-    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues)})
+    all_enriched = [_enrich_issue(i, pages_by_url, links_by_destination) for i in all_issues]
+    priority_rows = [i for i in all_enriched if (i.get('priority') or '').lower() in {'critical','high'}][:20]
+    if not priority_rows:
+        priority_rows = [i for i in all_enriched if (i.get('priority') or '').lower() == 'medium'][:20]
+
+    english_rows = [i for i in all_enriched if (i['raw'].issue_type or '').lower() in {'suspicious_slug','english_slug_on_fr'}]
+    english_counts = {
+        'total': len(english_rows),
+        'a_href': sum(1 for i in english_rows if i['discovery_type']=='a_href'),
+        'sitemap': sum(1 for i in english_rows if i['discovery_type']=='sitemap'),
+        'canonical': sum(1 for i in english_rows if i['discovery_type']=='canonical'),
+        'hreflang': sum(1 for i in english_rows if i['discovery_type']=='hreflang'),
+        'is_200': sum(1 for i in english_rows if i['target_is_200']),
+    }
+    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues), 'priority_rows': priority_rows, 'english_counts': english_counts, 'all_enriched': all_enriched})
