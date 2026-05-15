@@ -78,3 +78,10 @@ def mission_parameter_urls_seo_audit(request: Request):
     if not is_auth(request):
         return RedirectResponse('/login', 302)
     return templates.TemplateResponse('mission_parameter_urls_seo_audit.html', {'request': request})
+
+
+@router.get('/missions/internal-linking-audit')
+def mission_internal_linking_audit(request: Request):
+    if not is_auth(request):
+        return RedirectResponse('/login', 302)
+    return templates.TemplateResponse('mission_internal_linking_audit.html', {'request': request})

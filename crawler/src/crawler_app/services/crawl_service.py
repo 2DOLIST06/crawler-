@@ -16,11 +16,18 @@ from crawler_app.services.parameter_urls_audit import generate_parameter_urls_re
 TRACKING_PARAMS = {"utm_source", "utm_medium", "utm_campaign", "gclid", "fbclid", "msclkid", "ae"}
 ENGLISH_SLUGS = ["airplane", "helicopter", "glider", "paragliding", "skydiving", "hot-air-balloon", "flight-simulator", "airplane-flying-lesson"]
 IGNORE_PATTERNS = ["/_next/", "/api/", "/static/", "/images/", ".jpg", ".jpeg", ".png", ".webp", ".avif", ".svg", ".css", ".js", ".woff", ".woff2", ".ico"]
+CONVERSION_PATH_EXCLUDES = ("/order", "/gift")
 
 
 def _is_ignored_url(url: str) -> bool:
     l = (url or "").lower()
     return any(p in l for p in IGNORE_PATTERNS)
+
+
+def _is_excluded_conversion_url(url: str) -> bool:
+    parsed = urlparse(url or "")
+    path = (parsed.path or "").lower()
+    return any(segment in path for segment in CONVERSION_PATH_EXCLUDES)
 
 
 def _write_csv(path: Path, headers: list[str], rows: list[dict]):
@@ -108,6 +115,10 @@ async def execute_run(db, run: Run, project):
             skip_counts["ignored_pattern"] += 1
             print(f"[run {run.id}] Skipped external url={url}")
             continue
+        if _is_excluded_conversion_url(url):
+            skip_counts["conversion_funnel_excluded"] += 1
+            print(f"[run {run.id}] Skipped conversion funnel url={url}")
+            continue
         if not _is_internal_crawlable_url(project, n):
             skip_counts["out_of_scope"] += 1
             print(f"[run {run.id}] Skipped out of domain url={url}")
@@ -151,6 +162,8 @@ async def execute_run(db, run: Run, project):
                     continue
                 dest = normalize_url(href, fr["final_url"])
                 if _is_ignored_url(dest):
+                    continue
+                if _is_excluded_conversion_url(dest):
                     continue
                 internal = _is_internal_crawlable_url(project, dest)
                 internal_count += 1 if internal else 0

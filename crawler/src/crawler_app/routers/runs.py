@@ -24,6 +24,13 @@ def _is_english_url_on_fr(url: str | None) -> bool:
     return host.endswith('.fr') and '/en' in f"{path}/"
 
 
+def _is_conversion_funnel_url(url: str | None) -> bool:
+    if not url:
+        return False
+    path = (urlparse(url).path or "").lower()
+    return "/order" in path or "/gift" in path
+
+
 
 ISSUE_TYPE_LABELS = {
     "missing_title": "Title manquant",
@@ -313,4 +320,20 @@ def run_detail(run_id: int, request: Request, status_code: str | None = Query(de
         'prev_next': sum(1 for i in english_rows if i['discovery_type'] in {'prev','next','prev_next'}),
         'is_200': sum(1 for i in english_rows if i['target_is_200']),
     }
-    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'mission_type': mission_type, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues), 'priority_rows': priority_rows, 'english_counts': english_counts, 'all_enriched': all_enriched})
+    inbound_counts = {}
+    for page in all_pages:
+        if _is_conversion_funnel_url(page.final_url):
+            continue
+        inbound_counts[page.final_url] = 0
+    for link in links:
+        if not link.is_internal:
+            continue
+        dest = link.normalized_url or link.destination_url
+        if dest in inbound_counts and not _is_conversion_funnel_url(dest):
+            inbound_counts[dest] += 1
+    internal_linking_rows = [
+        {"url": url, "incoming_internal_links": count, "is_low_internal_linking": count < 2}
+        for url, count in sorted(inbound_counts.items(), key=lambda item: item[1])
+    ]
+    low_internal_linking_count = sum(1 for row in internal_linking_rows if row["is_low_internal_linking"])
+    return templates.TemplateResponse('run_detail.html', {'request': request, 'run': run, 'mission_type': mission_type, 'pages': pages, 'links': links, 'issues': issues, 'resources': resources, 'chart_stats': chart_stats, 'status_options': status_options, 'depth_options': depth_options, 'severity_options': severity_options, 'issue_type_options': issue_type_options, 'filters': {'status_code': status_code or '', 'page_q': page_q or '', 'depth': depth or '', 'indexability': indexability or '', 'severity': severity or '', 'issue_type': issue_type or '', 'issue_url_q': issue_url_q or ''}, 'duration': duration, 'stats': {'pages_200': pages_200, 'errors_4xx_5xx': errors_4xx_5xx, 'redirects': redirects, 'indexable': indexable, 'non_indexable': non_indexable, 'critical': sev_counts['critical'], 'high': sev_counts['high'], 'medium': sev_counts['medium'], 'low': sev_counts['low']}, 'enriched_issues': enriched_issues, 'action_plan': _build_action_plan(enriched_issues), 'priority_rows': priority_rows, 'english_counts': english_counts, 'all_enriched': all_enriched, 'internal_linking_rows': internal_linking_rows, 'low_internal_linking_count': low_internal_linking_count})

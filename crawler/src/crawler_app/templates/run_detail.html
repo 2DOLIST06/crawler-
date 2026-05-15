@@ -43,6 +43,27 @@
   <p><a class="btn-link" href="/exports/run/{{run.id}}/issues.csv">Exporter en CSV</a> · <a class="btn-link" href="/exports/run/{{run.id}}/issues.xlsx">Exporter en Excel (.xlsx)</a></p>
 </section>
 
+{% if mission_type == 'internal_linking_audit' %}
+<section class="card">
+  <h3>Maillage interne entrant (hors tunnel order/gift)</h3>
+  <p>Pages avec faible maillage interne entrant (&lt; 2 liens) : <strong>{{low_internal_linking_count}}</strong>.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>URL</th><th>Liens internes entrants</th><th>Statut</th></tr></thead>
+      <tbody>
+        {% for row in internal_linking_rows %}
+        <tr>
+          <td class="url">{{row.url}}</td>
+          <td>{{row.incoming_internal_links}}</td>
+          <td>{% if row.is_low_internal_linking %}<span class="warn">Insuffisant</span>{% else %}<span class="ok">OK</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 {% if mission_type == 'english_slugs_fr_audit' %}
 <section class='card'><h3>Slugs anglais sur le domaine français</h3>
 <p>Occurrences totales: {{english_counts.total}} | Liens HTML: {{english_counts.a_href}} | Sitemap: {{english_counts.sitemap}} | Canonical: {{english_counts.canonical}} | Hreflang: {{english_counts.hreflang}} | Prev/Next: {{english_counts.prev_next}} | URLs en 200: {{english_counts.is_200}}</p>
