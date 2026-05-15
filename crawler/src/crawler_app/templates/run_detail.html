@@ -14,7 +14,8 @@
     <div class="stat-card"><span>Problèmes critiques</span><strong>{{stats.critical}}</strong></div>
     <div class="stat-card"><span>Problèmes importants</span><strong>{{stats.high}}</strong></div>
     <div class="stat-card"><span>Liens cassés</span><strong>{{all_enriched|selectattr('raw.issue_type','equalto','broken_internal_link')|list|length}}</strong></div>
-    {% if mission_type == 'english_slugs_fr_audit' %}
+    
+{% if mission_type == 'english_slugs_fr_audit' %}
     <div class="stat-card"><span>URLs anglaises détectées</span><strong>{{english_counts.total}}</strong></div>
     {% endif %}
   </div>
@@ -36,6 +37,11 @@
 {% endif %}
 </section>
 
+<section class="card">
+  <h3>Export du tableau des issues</h3>
+  <p>Téléchargez le détail des issues au format CSV ou Excel, quelle que soit la mission.</p>
+  <p><a class="btn-link" href="/exports/run/{{run.id}}/issues.csv">Exporter en CSV</a> · <a class="btn-link" href="/exports/run/{{run.id}}/issues.xlsx">Exporter en Excel (.xlsx)</a></p>
+</section>
 
 {% if mission_type == 'english_slugs_fr_audit' %}
 <section class='card'><h3>Slugs anglais sur le domaine français</h3>
