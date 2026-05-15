@@ -3,6 +3,7 @@
 {% endblock %}
 {% block content %}
 <h2>Rapport du run #{{run.id}}</h2>
+<p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir</a></p>
 <section class="card">
   <h3>Résumé exécutif</h3>
   <div class="stats-grid">
@@ -12,8 +13,10 @@
     <div class="stat-card"><span>Issues totales</span><strong>{{run.issues_found}}</strong></div>
     <div class="stat-card"><span>Problèmes critiques</span><strong>{{stats.critical}}</strong></div>
     <div class="stat-card"><span>Problèmes importants</span><strong>{{stats.high}}</strong></div>
-    <div class="stat-card"><span>URLs anglaises détectées</span><strong>{{english_counts.total}}</strong></div>
     <div class="stat-card"><span>Liens cassés</span><strong>{{all_enriched|selectattr('raw.issue_type','equalto','broken_internal_link')|list|length}}</strong></div>
+    {% if mission_type == 'english_slugs_fr_audit' %}
+    <div class="stat-card"><span>URLs anglaises détectées</span><strong>{{english_counts.total}}</strong></div>
+    {% endif %}
   </div>
   {% if run.pages_crawled == run.max_pages %}<p class="warn">Attention : limite atteinte, audit partiel.</p>{% endif %}
 {% if run.status == 'pending' %}<p class="warn">Le crawl est en attente de démarrage.</p>{% endif %}
@@ -23,7 +26,6 @@
 <p><strong>Dernière URL crawlée :</strong> {{run.last_crawled_url or 'N/A'}}</p>
 <p><strong>Dernière mise à jour :</strong> {{run.updated_at or 'N/A'}}</p>
 <p><strong>Pages :</strong> {{run.pages_crawled}} / {{run.max_pages}}</p>
-<p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir</a></p>
 {% endif %}
 {% if run.status == 'failed' %}<p class="warn"><strong>Erreur :</strong> {{run.error_message or 'N/A'}}</p>{% endif %}
 </section>
@@ -39,7 +41,7 @@
 <section class='card'><h3>Détails des occurrences</h3><div class='table-wrap'><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Texte du lien</th><th>Slug détecté</th><th>Code HTTP</th><th>URL finale</th><th>Canonical</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>
 {% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class='url'>{{i.source_url}}</td><td class='url'>{{i.target_url}}</td><td>{{i.found_in}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td class='url'>{{i.target_url}}</td><td></td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}
 </tbody></table></div></section>
-{% else %}
+{% elif mission_type == 'seo_technical_audit' %}
 <section class="card"><h3>Ce qu’il faut corriger en priorité</h3>
 {% if priority_rows|length == 0 %}<p>Aucun problème critique ou important détecté sur ce crawl.</p>{% else %}
 <div class="table-wrap"><table><thead><tr><th>Priorité</th><th>Sujet</th><th>Problème</th><th>URL concernée</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>
@@ -60,6 +62,15 @@
 <details class="card"><summary>Détail des issues</summary><div class="table-wrap"><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Type de découverte</th><th>Texte du lien</th><th>Slug anglais détecté</th><th>Code HTTP de l’URL trouvée</th><th>Canonical de l’URL trouvée</th><th>Est-ce que l’URL trouvée a été crawlée ?</th><th>Est-ce que l’URL trouvée est indexable ?</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class="url">{{i.source_url}}</td><td class="url">{{i.target_url}}</td><td>{{i.found_in}}</td><td>{{i.discovery_type}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td></td><td>{% if i.target_status_code %}Oui{% else %}Non{% endif %}</td><td>{% if i.target_is_200 %}Potentiellement indexable{% else %}Non indexable{% endif %}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
 <details class="card"><summary>Détail des liens</summary><p>{{links|length}} liens trouvés.</p></details>
 <details class="card"><summary>Détail des ressources</summary><p>{{resources|length}} ressources détectées.</p></details>
+{% else %}
+<section class="card"><h3>Ce qu’il faut corriger en priorité</h3>
+{% if priority_rows|length == 0 %}<p>Aucun problème prioritaire détecté pour cette mission.</p>{% else %}
+<div class="table-wrap"><table><thead><tr><th>Priorité</th><th>Type de problème</th><th>URL concernée</th><th>Page source</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>
+{% for i in priority_rows %}<tr><td>{{i.priority}}</td><td>{{i.problem_summary}}</td><td class="url">{{i.target_url}}</td><td class="url">{{i.source_url}}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+</section>
+
+<details class="card"><summary>Détail des issues (adapté à la mission)</summary><div class="table-wrap"><table><thead><tr><th>Priorité</th><th>Type de problème</th><th>Page source</th><th>URL concernée</th><th>Où détecté</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.priority}}</td><td>{{i.problem_summary}}</td><td class="url">{{i.source_url}}</td><td class="url">{{i.target_url}}</td><td>{{i.found_in}}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
 {% endif %}
 {% endblock %}
 
