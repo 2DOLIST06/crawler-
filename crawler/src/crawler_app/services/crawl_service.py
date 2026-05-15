@@ -36,13 +36,17 @@ def _write_csv(path: Path, headers: list[str], rows: list[dict]):
 
 def _is_internal_crawlable_url(project, normalized_url: str) -> bool:
     parsed = urlparse(normalized_url or "")
-    host = (parsed.netloc or "").lower()
-    allowed_domain = (project.allowed_domain or "").lower()
+    host = (parsed.netloc or "").lower().strip(".")
+
+    raw_allowed_domain = (project.allowed_domain or "").strip()
+    allowed_parsed = urlparse(raw_allowed_domain if "://" in raw_allowed_domain else f"http://{raw_allowed_domain}")
+    allowed_domain = (allowed_parsed.netloc or "").lower().strip(".")
     if not host or not allowed_domain:
         return False
+
     if project.same_host_only:
         return host == allowed_domain
-    return host == allowed_domain
+    return host == allowed_domain or host.endswith(f".{allowed_domain}")
 
 def _matched_english_slug(url: str | None) -> str | None:
     parsed = urlparse(url or "")
@@ -87,20 +91,25 @@ async def execute_run(db, run: Run, project):
 
     q = deque(seeds)
     seen = set()
+    skip_counts = Counter()
 
     while q and run.pages_crawled < run.max_pages:
         url, depth, src = q.popleft()
         n = normalize_url(url)
         if n in seen:
+            skip_counts["already_seen"] += 1
             print(f"[run {run.id}] Skipped already visited url={url}")
             continue
         if depth > run.max_depth:
+            skip_counts["max_depth"] += 1
             print(f"[run {run.id}] Skipped out of domain url={url}")
             continue
         if _is_ignored_url(url):
+            skip_counts["ignored_pattern"] += 1
             print(f"[run {run.id}] Skipped external url={url}")
             continue
         if not _is_internal_crawlable_url(project, n):
+            skip_counts["out_of_scope"] += 1
             print(f"[run {run.id}] Skipped out of domain url={url}")
             continue
         print(
@@ -216,12 +225,30 @@ async def execute_run(db, run: Run, project):
             db.commit()
             print(f"[run {run.id}] Error url={url} error={e}")
 
+    if run.pages_crawled >= run.max_pages:
+        stop_reason = f"Arrêt: limite max_pages atteinte ({run.pages_crawled}/{run.max_pages})."
+    elif not q:
+        stop_reason = "Arrêt: plus de page à crawler (file vide)."
+    else:
+        stop_reason = "Arrêt: fin de crawl."
+    if run.pages_crawled == 0 and skip_counts.get("out_of_scope", 0) > 0:
+        stop_reason += " Toutes les URLs de départ ont été ignorées car hors périmètre."
+
     run.status = 'completed'
     run.finished_at = datetime.utcnow()
     run.updated_at = datetime.utcnow()
+    run.error_message = stop_reason
+    run.config_snapshot = {
+        **(run.config_snapshot or {}),
+        "stop_reason": stop_reason,
+        "skip_counts": dict(skip_counts),
+    }
     run.issues_found = db.query(Issue).filter(Issue.run_id == run.id).count()
     db.commit()
-    print(f"[run {run.id}] Completed pages={run.pages_crawled} links={run.links_found} issues={run.issues_found}")
+    print(
+        f"[run {run.id}] Completed pages={run.pages_crawled} links={run.links_found} "
+        f"issues={run.issues_found} reason={stop_reason} skips={dict(skip_counts)}"
+    )
 
     if is_seo_audit:
         _generate_seo_exports(db, run.id)
