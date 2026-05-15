@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Mission · Maillage interne entrant{% endblock %}
+{% block content %}
+<h2>Mission: Maillage interne entrant</h2>
+<section class="card">
+  <h3>Objectif</h3>
+  <p>Mesurer le nombre de liens internes entrants pour chaque URL crawlée et repérer les pages sous-maillées.</p>
+</section>
+<section class="card">
+  <h3>Règles de cette mission</h3>
+  <ul>
+    <li>Compter les liens internes entrants par URL.</li>
+    <li>Marquer comme insuffisantes les pages avec moins de 2 liens internes entrants.</li>
+    <li>Exclure les URLs du tunnel de conversion contenant <code>/order</code> ou <code>/gift</code>.</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Résultat attendu dans le rapport</h3>
+  <p>Un tableau d’URLs avec, pour chaque ligne, le nombre de liens internes entrants et le statut de maillage.</p>
+</section>
+{% endblock %}
