@@ -70,3 +70,11 @@ def mission_english_slugs_fr_audit(request: Request):
     if not is_auth(request):
         return RedirectResponse('/login', 302)
     return templates.TemplateResponse('mission_english_slugs_fr_audit.html', {'request': request})
+
+
+
+@router.get('/missions/parameter-urls-seo-audit')
+def mission_parameter_urls_seo_audit(request: Request):
+    if not is_auth(request):
+        return RedirectResponse('/login', 302)
+    return templates.TemplateResponse('mission_parameter_urls_seo_audit.html', {'request': request})

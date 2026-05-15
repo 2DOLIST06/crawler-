@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Mission Parameter URLs SEO Audit{% endblock %}
+{% block content %}
+<h2>Mission : Parameter URLs SEO Audit</h2>
+<section class="card">
+  <h3>Objectif</h3>
+  <p>Auditer les URLs avec paramètres (tracking, pagination, filtres, tri, réservation) pour détecter les risques SEO sans modifier le site.</p>
+</section>
+<section class="card">
+  <h3>Vérifications</h3>
+  <ul>
+    <li>Détection des URLs contenant <code>?</code> depuis les liens, canonical, hreflang, prev/next et sitemap.</li>
+    <li>Contrôle sitemap : URL paramétrée présente = erreur.</li>
+    <li>Contrôle canonical/robots pour tracking, pagination, filtres et tri.</li>
+    <li>Classification des paramètres : tracking, pagination, filter, sorting_display, booking_or_availability, unknown.</li>
+    <li>Génération limitée de variantes de test (cap configurable).</li>
+  </ul>
+</section>
+<section class="card">
+  <h3>Exports</h3>
+  <ul>
+    <li><code>parameter_urls_seo_audit.json</code></li>
+    <li><code>parameter_urls_seo_audit.csv</code></li>
+  </ul>
+</section>
+{% endblock %}
