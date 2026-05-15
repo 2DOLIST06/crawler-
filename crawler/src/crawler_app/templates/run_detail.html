@@ -23,20 +23,11 @@
 <p><strong>Dernière URL crawlée :</strong> {{run.last_crawled_url or 'N/A'}}</p>
 <p><strong>Dernière mise à jour :</strong> {{run.updated_at or 'N/A'}}</p>
 <p><strong>Pages :</strong> {{run.pages_crawled}} / {{run.max_pages}}</p>
-<p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir le suivi des pages</a></p>
+<p><a class="btn-link" href="/runs/{{run.id}}">Rafraîchir</a></p>
 {% endif %}
 {% if run.status == 'failed' %}<p class="warn"><strong>Erreur :</strong> {{run.error_message or 'N/A'}}</p>{% endif %}
 </section>
 
-{% if mission_type == 'simple_crawl' %}
-<section class="card"><h3>Résultat attendu de la mission</h3><p>Objectif: obtenir une cartographie fiable des URLs du site (statuts HTTP, profondeur, title, meta description, canonical, H1) pour prioriser les corrections techniques de base et préparer les audits SEO plus avancés.</p></section>
-{% elif mission_type == 'seo_technical_audit' %}
-<section class="card"><h3>Résultat attendu de la mission</h3><p>Objectif: produire un plan d’action SEO technique priorisé (critique/important/moyen/faible) avec, pour chaque problème, l’URL impactée, l’endroit où corriger et l’action recommandée.</p></section>
-{% elif mission_type == 'parameter_urls_seo_audit' %}
-<section class="card"><h3>Résultat attendu de la mission</h3><p>Objectif: identifier les URLs à paramètres qui nuisent à l’indexation (tracking, filtres, tri, pagination, duplication) et lister clairement les actions correctives attendues (canonical, noindex, blocage robots, nettoyage sitemap, règles de liens internes).</p></section>
-{% elif mission_type == 'english_slugs_fr_audit' %}
-<section class="card"><h3>Résultat attendu de la mission</h3><p>Objectif: supprimer les slugs anglais du périmètre FR en localisant précisément la source (HTML, sitemap, canonical, hreflang, prev/next), la cible et la correction à appliquer.</p></section>
-{% endif %}
 
 {% if mission_type == 'english_slugs_fr_audit' %}
 <section class='card'><h3>Slugs anglais sur le domaine français</h3>
@@ -63,15 +54,7 @@
 {% endif %}
 </section>
 
-{% if mission_type == 'simple_crawl' %}
-<section class="card"><h3>Lecture du rapport</h3><p>Ce rapport doit surtout servir à valider la couverture de crawl (pages, profondeur, statuts, métadonnées principales) et à détecter rapidement les URLs en erreur ou redirection.</p></section>
-{% elif mission_type == 'seo_technical_audit' %}
-<section class="card"><h3>Lecture du rapport</h3><p>Ce rapport doit être utilisé comme backlog de correction SEO: commencez par le tableau des priorités puis validez les preuves dans les détails des issues et des pages.</p></section>
-{% elif mission_type == 'parameter_urls_seo_audit' %}
-<section class="card"><h3>Lecture du rapport</h3><p>Ce rapport doit permettre de décider quelles URLs à paramètres conserver, canoniser, désindexer ou bloquer afin de réduire le bruit d’indexation.</p></section>
-{% else %}
 <section class="card"><h3>Contrôles SEO</h3><p>Vue synthétique par modules disponible via les sections détaillées ci-dessous.</p></section>
-{% endif %}
 
 <details class="card"><summary>Détail des pages crawlées</summary><div class="table-wrap"><table><thead><tr><th>Status</th><th>URL</th><th>depth</th><th>title</th><th>meta description</th><th>canonical</th><th>H1 count</th></tr></thead><tbody>{% for p in pages %}<tr><td>{{p.status_code}}</td><td class="url">{{p.final_url}}</td><td>{{p.depth}}</td><td>{{p.title}}</td><td>{{p.meta_description}}</td><td>{{p.canonical}}</td><td>{{p.h1_count}}</td></tr>{% endfor %}</tbody></table></div></details>
 <details class="card"><summary>Détail des issues</summary><div class="table-wrap"><table><thead><tr><th>Type de problème</th><th>Page source</th><th>URL trouvée</th><th>Où l’URL a été trouvée</th><th>Type de découverte</th><th>Texte du lien</th><th>Slug anglais détecté</th><th>Code HTTP de l’URL trouvée</th><th>Canonical de l’URL trouvée</th><th>Est-ce que l’URL trouvée a été crawlée ?</th><th>Est-ce que l’URL trouvée est indexable ?</th><th>Pourquoi c’est un problème</th><th>Où corriger ?</th><th>Action recommandée</th></tr></thead><tbody>{% for i in enriched_issues %}<tr><td>{{i.problem_summary}}</td><td class="url">{{i.source_url}}</td><td class="url">{{i.target_url}}</td><td>{{i.found_in}}</td><td>{{i.discovery_type}}</td><td></td><td></td><td>{{i.target_status_code}}</td><td></td><td>{% if i.target_status_code %}Oui{% else %}Non{% endif %}</td><td>{% if i.target_is_200 %}Potentiellement indexable{% else %}Non indexable{% endif %}</td><td>{{i.evidence}}</td><td>{{i.where_to_fix}}</td><td>{{i.action_recommandee}}</td></tr>{% endfor %}</tbody></table></div></details>
