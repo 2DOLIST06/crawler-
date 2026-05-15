@@ -91,20 +91,25 @@ async def execute_run(db, run: Run, project):
 
     q = deque(seeds)
     seen = set()
+    skip_counts = Counter()
 
     while q and run.pages_crawled < run.max_pages:
         url, depth, src = q.popleft()
         n = normalize_url(url)
         if n in seen:
+            skip_counts["already_seen"] += 1
             print(f"[run {run.id}] Skipped already visited url={url}")
             continue
         if depth > run.max_depth:
+            skip_counts["max_depth"] += 1
             print(f"[run {run.id}] Skipped out of domain url={url}")
             continue
         if _is_ignored_url(url):
+            skip_counts["ignored_pattern"] += 1
             print(f"[run {run.id}] Skipped external url={url}")
             continue
         if not _is_internal_crawlable_url(project, n):
+            skip_counts["out_of_scope"] += 1
             print(f"[run {run.id}] Skipped out of domain url={url}")
             continue
         print(
@@ -220,12 +225,30 @@ async def execute_run(db, run: Run, project):
             db.commit()
             print(f"[run {run.id}] Error url={url} error={e}")
 
+    if run.pages_crawled >= run.max_pages:
+        stop_reason = f"Arrêt: limite max_pages atteinte ({run.pages_crawled}/{run.max_pages})."
+    elif not q:
+        stop_reason = "Arrêt: plus de page à crawler (file vide)."
+    else:
+        stop_reason = "Arrêt: fin de crawl."
+    if run.pages_crawled == 0 and skip_counts.get("out_of_scope", 0) > 0:
+        stop_reason += " Toutes les URLs de départ ont été ignorées car hors périmètre."
+
     run.status = 'completed'
     run.finished_at = datetime.utcnow()
     run.updated_at = datetime.utcnow()
+    run.error_message = stop_reason
+    run.config_snapshot = {
+        **(run.config_snapshot or {}),
+        "stop_reason": stop_reason,
+        "skip_counts": dict(skip_counts),
+    }
     run.issues_found = db.query(Issue).filter(Issue.run_id == run.id).count()
     db.commit()
-    print(f"[run {run.id}] Completed pages={run.pages_crawled} links={run.links_found} issues={run.issues_found}")
+    print(
+        f"[run {run.id}] Completed pages={run.pages_crawled} links={run.links_found} "
+        f"issues={run.issues_found} reason={stop_reason} skips={dict(skip_counts)}"
+    )
 
     if is_seo_audit:
         _generate_seo_exports(db, run.id)

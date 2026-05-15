@@ -28,6 +28,12 @@
 <p><strong>Pages :</strong> {{run.pages_crawled}} / {{run.max_pages}}</p>
 {% endif %}
 {% if run.status == 'failed' %}<p class="warn"><strong>Erreur :</strong> {{run.error_message or 'N/A'}}</p>{% endif %}
+{% if run.status == 'completed' %}
+<p class="ok"><strong>Pourquoi le crawl s'est arrêté :</strong> {{(run.config_snapshot or {}).get('stop_reason') or run.error_message or 'Fin normale du crawl.'}}</p>
+{% if (run.config_snapshot or {}).get('skip_counts') %}
+<p><strong>Détails des URLs ignorées :</strong> {{(run.config_snapshot or {}).get('skip_counts')}}</p>
+{% endif %}
+{% endif %}
 </section>
 
 
