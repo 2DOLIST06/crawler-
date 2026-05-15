@@ -11,6 +11,7 @@ from crawler_app.crawler.parsers.html_parser import parse_html
 from crawler_app.crawler.fetchers.http_fetcher import HttpFetcher
 from crawler_app.crawler.fetchers.browser_fetcher import BrowserFetcher
 from crawler_app.crawler.analyzers import SEOAnalyzer, LinkAnalyzer, SlugAnalyzer
+from crawler_app.services.parameter_urls_audit import generate_parameter_urls_report
 
 TRACKING_PARAMS = {"utm_source", "utm_medium", "utm_campaign", "gclid", "fbclid", "msclkid", "ae"}
 ENGLISH_SLUGS = ["airplane", "helicopter", "glider", "paragliding", "skydiving", "hot-air-balloon", "flight-simulator", "airplane-flying-lesson"]
@@ -66,6 +67,7 @@ async def execute_run(db, run: Run, project):
     mission_type = run.mission_type or (run.config_snapshot or {}).get("mission_type", "simple_crawl")
     is_seo_audit = mission_type == "seo_technical_audit"
     is_english_slugs_audit = mission_type == "english_slugs_fr_audit"
+    is_parameter_urls_audit = mission_type == "parameter_urls_seo_audit"
 
     run.status = "running"
     run.started_at = datetime.utcnow()
@@ -225,6 +227,8 @@ async def execute_run(db, run: Run, project):
         _generate_seo_exports(db, run.id)
     if is_english_slugs_audit:
         _generate_english_slugs_exports(db, run.id)
+    if is_parameter_urls_audit:
+        await generate_parameter_urls_report(db, run.id, project.start_url)
 
 
 def _generate_seo_exports(db, run_id: int):
