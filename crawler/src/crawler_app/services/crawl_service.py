@@ -36,13 +36,17 @@ def _write_csv(path: Path, headers: list[str], rows: list[dict]):
 
 def _is_internal_crawlable_url(project, normalized_url: str) -> bool:
     parsed = urlparse(normalized_url or "")
-    host = (parsed.netloc or "").lower()
-    allowed_domain = (project.allowed_domain or "").lower()
+    host = (parsed.netloc or "").lower().strip(".")
+
+    raw_allowed_domain = (project.allowed_domain or "").strip()
+    allowed_parsed = urlparse(raw_allowed_domain if "://" in raw_allowed_domain else f"http://{raw_allowed_domain}")
+    allowed_domain = (allowed_parsed.netloc or "").lower().strip(".")
     if not host or not allowed_domain:
         return False
+
     if project.same_host_only:
         return host == allowed_domain
-    return host == allowed_domain
+    return host == allowed_domain or host.endswith(f".{allowed_domain}")
 
 def _matched_english_slug(url: str | None) -> str | None:
     parsed = urlparse(url or "")
